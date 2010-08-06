@@ -32,7 +32,7 @@ let PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a,
         let handler = proc types []
         unbox (FSharpValue.MakeFunction(typeof<'a>, handler))
 
-let sqlProcessor connectionString (sql: string, values: obj list) : IDataReader =
+let sqlProcessor (connectionFactory: unit -> IDbConnection) (sql: string, values: obj list) =
     let stripFormatting s =
         let i = ref -1
         let eval (rxMatch: Match) =
@@ -40,7 +40,7 @@ let sqlProcessor connectionString (sql: string, values: obj list) : IDataReader 
             sprintf "@p%d" !i
         Regex.Replace(s, "%.", eval)
     let sql = stripFormatting sql
-    let conn = new SqlConnection(connectionString)
+    let conn = connectionFactory()
     conn.Open()
     let cmd = conn.CreateCommand()
     cmd.CommandText <- sql
@@ -50,6 +50,6 @@ let sqlProcessor connectionString (sql: string, values: obj list) : IDataReader 
         param.Value <- p
         cmd.Parameters.Add param |> ignore
     values |> Seq.iteri createParam
-    upcast cmd.ExecuteReader(CommandBehavior.CloseConnection)
+    cmd.ExecuteReader(CommandBehavior.CloseConnection)
 
-let runQuery connectionString a = PrintfFormatProc (sqlProcessor connectionString) a
+let runQuery connectionFactory a = PrintfFormatProc (sqlProcessor connectionFactory) a
