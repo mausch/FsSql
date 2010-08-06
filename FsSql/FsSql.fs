@@ -52,4 +52,4 @@ let sqlProcessor connectionString (sql: string, values: obj list) : IDataReader 
     values |> Seq.iteri createParam
     upcast cmd.ExecuteReader(CommandBehavior.CloseConnection)
 
-let runQuery a = PrintfFormatProc (sqlProcessor "") a
+let runQuery connectionString a = PrintfFormatProc (sqlProcessor connectionString) a
