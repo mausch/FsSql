@@ -46,12 +46,16 @@ let insertUser (p: Person) =
 let updateUser (p: Person) =
     execNonQuery "update person set name = %s where id = %d" p.name p.id
 
+let countUsers () = 
+    runQuery "select count(*) from person" |> mapCount
+
 let deleteUser = execNonQuery "delete person where id = %d"
 
 [<Fact>]
 let ``insert then get``() = 
     createSchema()
     insertUser {id = 1; name = "pepe"; address = None}
+    printfn "count: %d" (countUsers())
     let p = getUser 1
     printfn "id=%d, name=%s" p.id p.name
     ()

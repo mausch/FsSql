@@ -110,6 +110,14 @@ let mapReader (mapper: #IDataRecord -> _) (dr: #IDataReader) =
         finally
             dr.Dispose() }
 
+let mapCount (dr: #IDataReader) =
+    try
+        if not (dr.Read())
+            then failwith "No results"
+            else dr.GetInt64(0)
+    finally
+        dr.Dispose()
+
 let readField (field: string) (record: #IDataRecord) : 'a option =
     let o = record.[field]
     if o = upcast DBNull.Value
