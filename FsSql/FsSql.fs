@@ -121,7 +121,7 @@ let readString : string -> #IDataRecord -> string option = readField
 
 let writeOption = 
     function
-    | None -> null
+    | None -> DBNull.Value :> obj
     | Some x -> box x
 
 let getOne mapper runSQL id =
