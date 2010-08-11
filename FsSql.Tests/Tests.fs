@@ -34,13 +34,11 @@ let createSchema() =
 let userMapper r = 
     { id = (readInt "id" r).Value ; name = (readString "name" r).Value; address = None}
 
-let getUser id = 
-    runQuery "select * from person where id = %d" id
-    |> mapReader userMapper
-    |> Enumerable.Single
+let getUser = 
+    runQuery "select * from person where id = %d" |> getOne userMapper
 
 let findUser =
-    getOne userMapper (runQuery "select * from person where id = %d")
+    runQuery "select * from person where id = %d" |> findOne userMapper
 
 let insertUser (p: Person) =
     execNonQuery "insert into person (id, name) values (%d, %s)" p.id p.name

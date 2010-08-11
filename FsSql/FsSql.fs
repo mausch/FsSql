@@ -3,6 +3,7 @@
 open System
 open System.Data
 open System.Data.SqlClient
+open System.Linq
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
 
@@ -124,10 +125,15 @@ let writeOption =
     | None -> DBNull.Value :> obj
     | Some x -> box x
 
-let getOne mapper runSQL id =
-    let r = runSQL id
+let findOne mapper query id =
+    let r = query id
             |> mapReader mapper
             |> Seq.toList
     if r.Length = 0
         then None
         else Some r.[0]
+
+let getOne mapper query id =
+    query id
+    |> mapReader mapper
+    |> Enumerable.Single
