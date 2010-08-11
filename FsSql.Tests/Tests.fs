@@ -39,13 +39,8 @@ let getUser id =
     |> mapReader userMapper
     |> Enumerable.Single
 
-let findUser id =
-    let r = runQuery "select * from person where id = %d" id
-            |> mapReader userMapper
-            |> Seq.toList
-    if r.Length = 0
-        then None
-        else Some r.[0]
+let findUser =
+    getOne userMapper (runQuery "select * from person where id = %d")
 
 let insertUser (p: Person) =
     execNonQuery "insert into person (id, name) values (%d, %s)" p.id p.name

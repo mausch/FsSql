@@ -59,7 +59,7 @@ let PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a,
         let handler = proc types []
         unbox (FSharpValue.MakeFunction(typeof<'a>, handler))
 
-let sqlProcessor (connectionFactory: unit -> IDbConnection) (sql: string, values: obj list) =
+let sqlProcessor (connectionFactory: unit -> #IDbConnection) (sql: string, values: obj list) =
     let stripFormatting s =
         let i = ref -1
         let eval (rxMatch: Match) =
@@ -91,7 +91,7 @@ let runQueryToReader connectionFactory a = PrintfFormatProc (sqlProcessorToDataR
 let kkk a = sqlProcessorToUnit a
 let runQuery connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
 
-let transactional (conn: IDbConnection) f =
+let transactional (conn: #IDbConnection) f =
     let tx = conn.BeginTransaction()
     try
         let r = f conn
@@ -101,7 +101,7 @@ let transactional (conn: IDbConnection) f =
         tx.Rollback()
         reraise()
 
-let mapReader (mapper: IDataRecord -> _) (dr: IDataReader) = 
+let mapReader (mapper: #IDataRecord -> _) (dr: #IDataReader) = 
     seq {
         try
             while dr.Read() do
@@ -109,17 +109,25 @@ let mapReader (mapper: IDataRecord -> _) (dr: IDataReader) =
         finally
             dr.Dispose() }
 
-let readField (field: string) (record: IDataRecord) : 'a option =
+let readField (field: string) (record: #IDataRecord) : 'a option =
     let o = record.[field]
     if o = upcast DBNull.Value
         then None
         else Some (unbox o)
 
-let readInt : string -> IDataRecord -> int option = readField 
+let readInt : string -> #IDataRecord -> int option = readField 
 
-let readString : string -> IDataRecord -> string option = readField 
+let readString : string -> #IDataRecord -> string option = readField 
 
 let writeOption = 
     function
     | None -> null
     | Some x -> box x
+
+let getOne mapper runSQL id =
+    let r = runSQL id
+            |> mapReader mapper
+            |> Seq.toList
+    if r.Length = 0
+        then None
+        else Some r.[0]
