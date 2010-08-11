@@ -46,6 +46,8 @@ let insertUser (p: Person) =
 let updateUser (p: Person) =
     execNonQuery "update person set name = %s where id = %d" p.name p.id
 
+let deleteUser = execNonQuery "delete person where id = %d"
+
 [<Fact>]
 let ``insert then get``() = 
     createSchema()
