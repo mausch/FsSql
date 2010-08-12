@@ -7,7 +7,13 @@ open System.Linq
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
 
+(*type ConnectionFactory = {
+    ownConnection: bool
+    create: unit -> IDbConnection
+}*)
 
+//let defer v () = v
+    
 let PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
     if not (FSharpType.IsFunction typeof<'a>) then
         unbox (worker (query.Value, []))
@@ -34,7 +40,7 @@ let PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a,
         let handler = proc types []
         unbox (FSharpValue.MakeFunction(typeof<'a>, handler))
 
-let sqlProcessor (connectionFactory: unit -> #IDbConnection) (sql: string, values: obj list) =
+let sqlProcessor (conn: #IDbConnection) (sql: string, values: obj list) =
     let stripFormatting s =
         let i = ref -1
         let eval (rxMatch: Match) =
@@ -42,7 +48,6 @@ let sqlProcessor (connectionFactory: unit -> #IDbConnection) (sql: string, value
             sprintf "@p%d" !i
         Regex.Replace(s, "%.", eval)
     let sql = stripFormatting sql
-    let conn = connectionFactory()
     let cmd = conn.CreateCommand()
     cmd.CommandText <- sql
     let createParam i (p: obj) =
@@ -63,13 +68,12 @@ let sqlProcessorToUnit a b =
     cmd.ExecuteNonQuery() |> ignore
 
 let runQueryToReader connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
-let kkk a = sqlProcessorToUnit a
 let runQuery connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
 
-let transactional (conn: #IDbConnection) f =
+let transactional (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a) =
     let tx = conn.BeginTransaction()
     try
-        let r = f conn
+        let r = f conn a
         tx.Commit()
         r
     with e ->
@@ -127,3 +131,9 @@ let fields t =
 
 let fieldList t =
     String.Join(",", fields t |> Seq.toArray)
+
+
+type TransactionBuilder() =
+    member x.Zero() = ()
+
+let tx = TransactionBuilder()

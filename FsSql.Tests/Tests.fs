@@ -5,11 +5,16 @@ open System.Data
 open System.Linq
 open FsSql
 
+let catch defaultValue f a =
+    try
+        f a
+    with e -> defaultValue
+
 let conn = new System.Data.SQLite.SQLiteConnection("Data Source=:memory:;Version=3;New=True")
 conn.Open()
-let createConnection () : IDbConnection = upcast conn
-let execNonQuery a = runQuery createConnection a
-let runQuery a = runQueryToReader createConnection a
+//let createConnection () : IDbConnection = upcast conn
+let execNonQuery a = runQuery conn a
+let runQuery a = runQueryToReader conn a
 
 type Address = {
     id: int
@@ -30,6 +35,8 @@ let createSchema() =
     cmd.CommandText <- "create table address (id int primary key not null, street varchar null, city varchar null)"
     cmd.ExecuteNonQuery() |> ignore
     ()
+
+createSchema()
 
 let userMapper r = 
     { id = (readInt "id" r).Value ; name = (readString "name" r).Value; address = None}
@@ -53,9 +60,23 @@ let deleteUser = execNonQuery "delete person where id = %d"
 
 [<Fact>]
 let ``insert then get``() = 
-    createSchema()
     insertUser {id = 1; name = "pepe"; address = None}
     printfn "count: %d" (countUsers())
     let p = getUser 1
     printfn "id=%d, name=%s" p.id p.name
+    ()
+
+[<Fact>]
+let ``transactions`` () =
+    let someTran conn () =
+        let runQuery a = runQueryToReader conn a
+        insertUser {id = 1; name = "pepe"; address = None}
+        insertUser {id = 2; name = "jose"; address = None}
+        failwith "Bla"
+        ()
+
+    let someTran = transactional conn someTran
+    let someTran = catch () someTran
+    someTran()
+    Assert.Equal(0L, countUsers())
     ()
