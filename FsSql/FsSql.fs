@@ -81,8 +81,8 @@ let sqlProcessorToUnit a b =
 let execReader connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
 let execNonQuery connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
 
-let transactional (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a) =
-    let tx = conn.BeginTransaction()
+let transactionalWithIsolation (isolation: IsolationLevel) (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a) =
+    let tx = conn.BeginTransaction(isolation)
     try
         let r = f conn a
         tx.Commit()
@@ -90,6 +90,9 @@ let transactional (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a)
     with e ->
         tx.Rollback()
         reraise()
+
+let transactional a = 
+    transactionalWithIsolation IsolationLevel.Unspecified a
 
 type TxResult<'a> = Success of 'a | Failure of exn
 
