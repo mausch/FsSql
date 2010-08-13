@@ -13,8 +13,8 @@ let catch defaultValue f a =
 let conn = new System.Data.SQLite.SQLiteConnection("Data Source=:memory:;Version=3;New=True")
 conn.Open()
 //let createConnection () : IDbConnection = upcast conn
-let execNonQuery a = runQuery conn a
-let runQuery a = runQueryToReader conn a
+let execNonQuery a = execNonQuery conn a
+let runQuery a = execReader conn a
 
 type Address = {
     id: int
@@ -78,7 +78,6 @@ let ``get many``() =
 [<Fact>]
 let ``transactions`` () =
     let someTran conn () =
-        let runQuery a = runQueryToReader conn a
         insertUser {id = 1; name = "pepe"; address = None}
         insertUser {id = 2; name = "jose"; address = None}
         failwith "Bla"

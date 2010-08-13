@@ -78,8 +78,8 @@ let sqlProcessorToUnit a b =
     let cmd = sqlProcessor a b
     cmd.ExecuteNonQuery() |> ignore
 
-let runQueryToReader connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
-let runQuery connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
+let execReader connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
+let execNonQuery connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
 
 let transactional (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a) =
     let tx = conn.BeginTransaction()
