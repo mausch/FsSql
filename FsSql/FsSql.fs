@@ -131,9 +131,3 @@ let fields t =
 
 let fieldList t =
     String.Join(",", fields t |> Seq.toArray)
-
-
-type TransactionBuilder() =
-    member x.Zero() = ()
-
-let tx = TransactionBuilder()
