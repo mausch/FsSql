@@ -91,6 +91,18 @@ let transactional (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a)
         tx.Rollback()
         reraise()
 
+type TxResult<'a> = Success of 'a | Failure of exn
+
+let transactional2 (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a) =
+    let tx = conn.BeginTransaction()
+    try
+        let r = f conn a
+        tx.Commit()
+        Success r
+    with e ->
+        tx.Rollback()
+        Failure e
+
 let mapCount (dr: #IDataReader) =
     try
         if not (dr.Read())

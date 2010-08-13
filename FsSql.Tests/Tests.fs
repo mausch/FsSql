@@ -88,3 +88,18 @@ let ``transactions`` () =
     someTran()
     Assert.Equal(0L, countUsers())
     ()
+
+[<Fact>]
+let ``another transaction approach`` () =
+    let someTran conn () =
+        insertUser {id = 1; name = "pepe"; address = None}
+        insertUser {id = 2; name = "jose"; address = None}
+        failwith "Bla"
+        5
+
+    let someTran = transactional2 conn someTran
+    match someTran() with
+    | Success v -> printfn "Success %d" v
+    | Failure e -> printfn "Failed with exception %A" e
+    Assert.Equal(0L, countUsers())
+    ()
