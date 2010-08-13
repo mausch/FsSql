@@ -67,6 +67,15 @@ let ``insert then get``() =
     ()
 
 [<Fact>]
+let ``get many``() =
+    for i in {1..100} do
+        insertUser {id = i; name = "pepe" + i.ToString(); address = None}
+    let first10 = runQuery "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
+    for i in first10 do
+        printfn "%d" (readInt "id" i).Value
+    printfn "end!"
+
+[<Fact>]
 let ``transactions`` () =
     let someTran conn () =
         let runQuery a = runQueryToReader conn a

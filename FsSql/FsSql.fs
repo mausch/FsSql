@@ -13,6 +13,17 @@ open Microsoft.FSharp.Reflection
 }*)
 
 //let defer v () = v
+
+module Seq =
+    let ofDataReader (dr: IDataReader) =
+        seq {
+            try
+                while dr.Read() do
+                    yield dr :> IDataRecord
+            finally
+                //printfn "disposed datareader"
+                dr.Dispose() }
+        
     
 let PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
     if not (FSharpType.IsFunction typeof<'a>) then
@@ -80,14 +91,6 @@ let transactional (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a)
         tx.Rollback()
         reraise()
 
-let mapReader (mapper: #IDataRecord -> _) (dr: #IDataReader) = 
-    seq {
-        try
-            while dr.Read() do
-                yield mapper dr 
-        finally
-            dr.Dispose() }
-
 let mapCount (dr: #IDataReader) =
     try
         if not (dr.Read())
@@ -113,7 +116,8 @@ let writeOption =
 
 let findOne mapper query id =
     let r = query id
-            |> mapReader mapper
+            |> Seq.ofDataReader
+            |> Seq.map mapper
             |> Seq.toList
     if r.Length = 0
         then None
@@ -121,7 +125,8 @@ let findOne mapper query id =
 
 let getOne mapper query id =
     query id
-    |> mapReader mapper
+    |> Seq.ofDataReader
+    |> Seq.map mapper
     |> Enumerable.Single
 
 let fields t =
