@@ -6,6 +6,7 @@ open System.Data.SqlClient
 open System.Linq
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
+open FsSqlImpl
 
 (*type ConnectionFactory = {
     ownConnection: bool
@@ -16,14 +17,21 @@ open Microsoft.FSharp.Reflection
 
 module Seq =
     let ofDataReader (dr: IDataReader) =
+        let lockObj = obj()
+        let lockReader f = lock lockObj f
+        let read()() =            
+            let h = dr.Read()
+            if h
+                then DictDataRecord(dr) :> IDataRecord
+                else null
+        let lockedRead = lockReader read
+        let records = Seq.initInfinite (fun _ -> lockedRead())
+                      |> Seq.takeWhile (fun r -> r <> null)
         seq {
             try
-                while dr.Read() do
-                    yield dr :> IDataRecord
+                yield! records
             finally
-                //printfn "disposed datareader"
-                dr.Dispose() }
-        
+                dr.Dispose()}
     
 let PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
     if not (FSharpType.IsFunction typeof<'a>) then

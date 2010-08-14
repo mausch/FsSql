@@ -4,6 +4,7 @@ open Xunit
 open System.Data
 open System.Linq
 open FsSql
+open Microsoft.FSharp.Collections
 
 let catch defaultValue f a =
     try
@@ -103,3 +104,24 @@ let ``transaction with option`` () =
     | Failure e -> printfn "Failed with exception %A" e
     Assert.Equal(0L, countUsers())
     ()
+
+[<Fact>]
+let ``datareader is parallelizable`` () =
+    // Tests whether n is prime - expects n > 1
+    // From http://tomasp.net/blog/fsparallelops.aspx
+    let isPrime n =
+      // calculate how large divisors should we test..
+      let max = int (sqrt (float n))
+      // try to divide n by 2..max (stops when divisor is found)
+      not ({ 2..max } |> Seq.filter (fun d -> n%d = 0) |> Enumerable.Any)
+
+    printfn "inserting"
+    for i in 10000..100000 do
+        insertUser {id = i; name = "pepe" + i.ToString(); address = None}
+    printfn "reading"
+    let primes = runQuery "select * from person"
+                 |> Seq.ofDataReader
+                 |> Seq.map (fun r -> (r |> readInt "id").Value)
+                 |> PSeq.filter isPrime
+                 |> PSeq.length
+    printfn "%d primes" primes

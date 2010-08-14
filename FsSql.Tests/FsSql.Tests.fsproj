@@ -33,6 +33,8 @@
     <DocumentationFile>bin\Release\FsSql.Tests.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="FSharp.PowerPack, Version=1.9.9.9, Culture=neutral, PublicKeyToken=a19089b1c74d0809" />
+    <Reference Include="FSharp.PowerPack.Parallel.Seq, Version=1.9.9.9, Culture=neutral, PublicKeyToken=a19089b1c74d0809" />
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core" />
     <Reference Include="System" />
