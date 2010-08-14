@@ -68,7 +68,7 @@ let ``insert then get``() =
 
 [<Fact>]
 let ``get many``() =
-    for i in {1..100} do
+    for i in 1..100 do
         insertUser {id = i; name = "pepe" + i.ToString(); address = None}
     let first10 = runQuery "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
     for i in first10 do
@@ -76,7 +76,7 @@ let ``get many``() =
     printfn "end!"
 
 [<Fact>]
-let ``transactions`` () =
+let ``transaction with exception`` () =
     let someTran conn () =
         insertUser {id = 1; name = "pepe"; address = None}
         insertUser {id = 2; name = "jose"; address = None}
@@ -90,7 +90,7 @@ let ``transactions`` () =
     ()
 
 [<Fact>]
-let ``another transaction approach`` () =
+let ``transaction with option`` () =
     let someTran conn () =
         insertUser {id = 1; name = "pepe"; address = None}
         insertUser {id = 2; name = "jose"; address = None}
