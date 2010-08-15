@@ -114,12 +114,6 @@ let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType:
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
     cmd.CommandType <- cmdType
-    let addParam (parameterName, parameterType, value) = 
-        let p = cmd.CreateParameter()
-        p.ParameterName <- parameterName
-        p.DbType <- parameterType
-        p.Value <- value
-        cmd.Parameters.Add p |> ignore
     parameters |> Seq.iter (addParameter >> ignore)
     cmd
 
