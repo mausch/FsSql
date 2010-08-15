@@ -1,6 +1,7 @@
 ﻿module FsSql.Tests
 
 open Xunit
+open System
 open System.Data
 open System.Linq
 open FsSql
@@ -163,6 +164,18 @@ let ``datareader is parallelizable`` () =
                  |> PSeq.filter isPrime
                  |> PSeq.length
     logf "%d primes" primes
+
+[<Fact>]
+let ``datareader to seq is forward-only``() =
+    insertUsers()
+    let all = execReader conn "select * from person" []
+              |> Seq.ofDataReader
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
+    let secondIter() = 
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
+    Assert.Throws<InvalidOperationException> secondIter |> ignore
+    ()
+    
 
 [<Fact>]
 let ``datareader to seq is cacheable`` () =
