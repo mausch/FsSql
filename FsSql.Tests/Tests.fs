@@ -78,6 +78,19 @@ let ``insert then get``() =
     ()
 
 [<Fact>]
+let ``find non-existent record``() =
+    let p = findUser 39393
+    Assert.True p.IsNone
+    printfn "end test"
+
+[<Fact>]
+let ``find existent record``() =
+    insertUser {id = 1; name = "pepe"; address = None}
+    let p = findUser 1
+    Assert.True p.IsSome
+    printfn "end test"
+
+[<Fact>]
 let ``get many``() =
     for i in 1..100 do
         insertUser {id = i; name = "pepe" + i.ToString(); address = None}
