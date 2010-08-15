@@ -48,13 +48,13 @@ type DictDataRecord(dr: IDataRecord) =
         | None -> Unchecked.defaultof<'a>
         | Some x -> x
 
-    let getEntryValue (e: Entry) = e.value
+    let getEntryValue (e: Entry) = e.value |> unbox
 
     let getValueOrDefault i =
         (getByIndex i >>= (getEntryValue >> Some)) |> optionToDefault |> unbox
 
     let getValueOrDefaultByName key =
-        (getByName key >>= (getEntryValue >> Some)) |> optionToDefault
+        (getByName key >>= (getEntryValue >> Some)) |> optionToDefault |> unbox
 
     interface IDataRecord with
         member x.GetBoolean i = getValueOrDefault i
