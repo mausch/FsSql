@@ -116,6 +116,18 @@ let ``transaction with exception`` () =
     ()
 
 [<Fact>]
+let ``transaction committed`` () =
+    let someTran () =
+        insertUser {id = 1; name = "pepe"; address = None}
+        insertUser {id = 2; name = "jose"; address = None}
+        ()
+
+    let someTran = transactional conn (expand someTran)
+    someTran()
+    Assert.Equal(2L, countUsers())
+    ()
+
+[<Fact>]
 let ``transaction with option`` () =
     let someTran conn () =
         insertUser {id = 1; name = "pepe"; address = None}
