@@ -89,9 +89,10 @@ let sqlProcessorToUnit a b =
 let execReaderF connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
 let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
 
-let prepareCommand (connection: #IDbConnection) (sql: string) (parameters: (string * DbType * obj) list) =
+let prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandType) (parameters: (string * DbType * obj) list) =
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
+    cmd.CommandType <- cmdType
     let addParam (parameterName, parameterType, value) = 
         let p = cmd.CreateParameter()
         p.ParameterName <- parameterName
@@ -108,11 +109,11 @@ let inferParameterDbTypes (p: (string * obj) list) =
     p |> List.map inferParameterDbType
 
 let execReader (connection: #IDbConnection) (sql: string) (parameters: (string * DbType * obj) list) =
-    use cmd = prepareCommand connection sql parameters
+    use cmd = prepareCommand connection sql CommandType.Text parameters
     cmd.ExecuteReader()
 
 let execNonQuery (connection: #IDbConnection) (sql: string) (parameters: (string * DbType * obj) list) =
-    use cmd = prepareCommand connection sql parameters
+    use cmd = prepareCommand connection sql CommandType.Text parameters
     cmd.ExecuteNonQuery() |> ignore
     
 let transactionalWithIsolation (isolation: IsolationLevel) (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a) =
