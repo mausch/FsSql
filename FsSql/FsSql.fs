@@ -1,6 +1,7 @@
 ﻿module FsSql
 
 open System
+open System.Collections.Generic
 open System.Data
 open System.Data.SqlClient
 open System.Linq
@@ -85,14 +86,35 @@ let sqlProcessorToUnit a b =
     let cmd = sqlProcessor a b
     cmd.ExecuteNonQuery() |> ignore
 
-let execReader connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
-let execNonQuery connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
+let execReaderF connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
+let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
 
+let prepareCommand (connection: #IDbConnection) (sql: string) (parameters: (string * obj) list) =
+    let cmd = connection.CreateCommand()
+    cmd.CommandText <- sql
+    let addParam (k,v) = 
+        let p = cmd.CreateParameter()
+        p.ParameterName <- k
+        p.Value <- v
+        cmd.Parameters.Add p |> ignore
+    parameters |> Seq.iter addParam
+    cmd    
+
+let execReader (connection: #IDbConnection) (sql: string) (parameters: (string * obj) list) =
+    use cmd = prepareCommand connection sql parameters
+    cmd.ExecuteReader()
+
+let execNonQuery (connection: #IDbConnection) (sql: string) (parameters: (string * obj) list) =
+    use cmd = prepareCommand connection sql parameters
+    cmd.ExecuteNonQuery() |> ignore
+    
 let transactionalWithIsolation (isolation: IsolationLevel) (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a) =
     let tx = conn.BeginTransaction(isolation)
+    log "started tx"
     try
         let r = f conn a
         tx.Commit()
+        log "committed tx"
         r
     with e ->
         tx.Rollback()

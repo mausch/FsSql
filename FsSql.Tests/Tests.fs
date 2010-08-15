@@ -14,8 +14,9 @@ let catch defaultValue f a =
 let conn = new System.Data.SQLite.SQLiteConnection("Data Source=:memory:;Version=3;New=True")
 conn.Open()
 //let createConnection () : IDbConnection = upcast conn
+let execNonQueryF a = execNonQueryF conn a
 let execNonQuery a = execNonQuery conn a
-let runQuery a = execReader conn a
+let runQuery a = execReaderF conn a
 
 type Address = {
     id: int
@@ -49,15 +50,18 @@ let findUser =
     runQuery "select * from person where id = %d" |> findOne userMapper
 
 let insertUser (p: Person) =
-    execNonQuery "insert into person (id, name) values (%d, %s)" p.id p.name
+    execNonQuery 
+        "insert into person (id, name) values (@id, @name)"
+        ["@id", upcast p.id; "@name", upcast p.name]
+    //execNonQuery "insert into person (id, name) values (%d, %s)" p.id p.name
 
 let updateUser (p: Person) =
-    execNonQuery "update person set name = %s where id = %d" p.name p.id
+    execNonQueryF "update person set name = %s where id = %d" p.name p.id
 
 let countUsers () = 
     runQuery "select count(*) from person" |> mapCount
 
-let deleteUser = execNonQuery "delete person where id = %d"
+let deleteUser = execNonQueryF "delete person where id = %d"
 
 [<Fact>]
 let ``insert then get``() = 
