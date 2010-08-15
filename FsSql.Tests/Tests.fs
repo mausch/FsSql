@@ -187,3 +187,17 @@ let ``datareader to seq is cacheable 3`` () =
         all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
     using reader withReader
     ()
+
+[<Fact>]
+let ``datareader with lazylist`` () =
+    insertUsers()
+    // this doesn't dispose the data reader either!
+    let reader = execReader conn "select * from person" []
+    let withReader reader =
+        let all = reader
+                  |> Seq.ofDataReader
+                  |> LazyList.ofSeq
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
+    using reader withReader
+    ()
