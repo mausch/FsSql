@@ -58,7 +58,7 @@ let findUser =
 let insertUser (p: Person) =
     execNonQuery 
         "insert into person (id, name) values (@id, @name)"
-        ["@id", upcast p.id; "@name", upcast p.name]
+        (inferParameterDbTypes ["@id", upcast p.id; "@name", upcast p.name])
     //execNonQuery "insert into person (id, name) values (%d, %s)" p.id p.name
 
 let updateUser (p: Person) =

@@ -89,22 +89,29 @@ let sqlProcessorToUnit a b =
 let execReaderF connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
 let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
 
-let prepareCommand (connection: #IDbConnection) (sql: string) (parameters: (string * obj) list) =
+let prepareCommand (connection: #IDbConnection) (sql: string) (parameters: (string * DbType * obj) list) =
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
-    let addParam (k,v) = 
+    let addParam (parameterName, parameterType, value) = 
         let p = cmd.CreateParameter()
-        p.ParameterName <- k
-        p.Value <- v
+        p.ParameterName <- parameterName
+        p.DbType <- parameterType
+        p.Value <- value
         cmd.Parameters.Add p |> ignore
     parameters |> Seq.iter addParam
     cmd
 
-let execReader (connection: #IDbConnection) (sql: string) (parameters: (string * obj) list) =
+let inferParameterDbType (p: string * obj) = 
+    fst p, Unchecked.defaultof<DbType>, snd p
+
+let inferParameterDbTypes (p: (string * obj) list) = 
+    p |> List.map inferParameterDbType
+
+let execReader (connection: #IDbConnection) (sql: string) (parameters: (string * DbType * obj) list) =
     use cmd = prepareCommand connection sql parameters
     cmd.ExecuteReader()
 
-let execNonQuery (connection: #IDbConnection) (sql: string) (parameters: (string * obj) list) =
+let execNonQuery (connection: #IDbConnection) (sql: string) (parameters: (string * DbType * obj) list) =
     use cmd = prepareCommand connection sql parameters
     cmd.ExecuteNonQuery() |> ignore
     
