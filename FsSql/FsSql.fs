@@ -89,6 +89,27 @@ let internal sqlProcessorNonQuery a b =
 let execReaderF connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
 let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorNonQuery connectionFactory) a
 
+type Parameter = {
+    DbType: DbType
+    Direction: ParameterDirection
+    ParameterName: string
+    Value: obj
+} with
+    static member make(parameterName, value) =
+        { DbType = Unchecked.defaultof<DbType>
+          Direction = ParameterDirection.Input
+          ParameterName = parameterName
+          Value = value }
+
+let addParameter (cmd: #IDbCommand) (p: Parameter) =
+    let par = cmd.CreateParameter()
+    par.DbType <- p.DbType
+    par.Direction <- p.Direction
+    par.ParameterName <- p.ParameterName
+    par.Value <- p.Value
+    cmd.Parameters.Add par |> ignore
+    cmd
+
 let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandType) (parameters: (string * DbType * obj) list) =
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
