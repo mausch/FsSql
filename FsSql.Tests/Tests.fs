@@ -11,9 +11,15 @@ let catch defaultValue f a =
         f a
     with e -> defaultValue
 
-let conn = new System.Data.SQLite.SQLiteConnection("Data Source=:memory:;Version=3;New=True")
-conn.Open()
-//let createConnection () : IDbConnection = upcast conn
+let expand f = fun _ -> f
+
+let createConnection() =
+    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=:memory:;Version=3;New=True")
+    conn.Open()
+    conn
+
+let conn = createConnection()
+
 let execNonQueryF a = execNonQueryF conn a
 let execNonQuery a = execNonQuery conn a
 let runQuery a = execReaderF conn a
@@ -58,8 +64,8 @@ let insertUser (p: Person) =
 let updateUser (p: Person) =
     execNonQueryF "update person set name = %s where id = %d" p.name p.id
 
-let countUsers () = 
-    runQuery "select count(*) from person" |> mapCount
+let countUsers () : int64 = 
+    execScalar conn "select count(*) from person" []
 
 let deleteUser = execNonQueryF "delete person where id = %d"
 
@@ -82,13 +88,13 @@ let ``get many``() =
 
 [<Fact>]
 let ``transaction with exception`` () =
-    let someTran conn () =
+    let someTran () =
         insertUser {id = 1; name = "pepe"; address = None}
         insertUser {id = 2; name = "jose"; address = None}
         failwith "Bla"
         ()
 
-    let someTran = transactional conn someTran
+    let someTran = transactional conn (expand someTran)
     let someTran = catch () someTran
     someTran()
     Assert.Equal(0L, countUsers())
@@ -131,7 +137,7 @@ let ``datareader is parallelizable`` () =
 
     log "inserting"
     let insert () =
-        for i in 100000..200000 do
+        for i in 100000..400000 do
             insertUser {id = i; name = "pepe" + i.ToString(); address = None}
     let insert = transactionalWithIsolation IsolationLevel.ReadCommitted conn (fun _ -> insert)
     insert()
@@ -139,6 +145,6 @@ let ``datareader is parallelizable`` () =
     let primes = runQuery "select * from person"
                  |> Seq.ofDataReader
                  |> Seq.map (fun r -> (r |> readInt "id").Value)
-                 |> PSeq.filter isPrime
-                 |> PSeq.length
+                 |> Seq.filter isPrime
+                 |> Seq.length
     logf "%d primes" primes

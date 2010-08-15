@@ -98,7 +98,7 @@ let prepareCommand (connection: #IDbConnection) (sql: string) (parameters: (stri
         p.Value <- v
         cmd.Parameters.Add p |> ignore
     parameters |> Seq.iter addParam
-    cmd    
+    cmd
 
 let execReader (connection: #IDbConnection) (sql: string) (parameters: (string * obj) list) =
     use cmd = prepareCommand connection sql parameters
@@ -118,6 +118,7 @@ let transactionalWithIsolation (isolation: IsolationLevel) (conn: #IDbConnection
         r
     with e ->
         tx.Rollback()
+        log "rolled back tx"
         reraise()
 
 let transactional a = 
@@ -135,23 +136,28 @@ let transactional2 (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a
         tx.Rollback()
         Failure e
 
-let mapCount (dr: #IDataReader) =
-    try
-        if not (dr.Read())
-            then failwith "No results"
-            else dr.GetInt64(0)
-    finally
-        dr.Dispose()
+let isNull a = DBNull.Value.Equals a    
 
 let readField (field: string) (record: #IDataRecord) : 'a option =
     let o = record.[field]
-    if o = upcast DBNull.Value
+    if isNull o
         then None
         else Some (unbox o)
 
 let readInt : string -> #IDataRecord -> int option = readField 
 
 let readString : string -> #IDataRecord -> string option = readField 
+
+let mapScalar (dr: #IDataReader) =
+    try
+        if dr.Read()
+            then unbox dr.[0]
+            else failwith "No results"
+    finally
+        dr.Dispose()
+
+let execScalar a b c =
+    execReader a b c |> mapScalar
 
 let writeOption = 
     function
