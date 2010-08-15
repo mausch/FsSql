@@ -176,6 +176,7 @@ let findOne mapper query id =
     let r = query id
             |> Seq.ofDataReader
             |> Seq.map mapper
+            |> Seq.truncate 1
             |> Seq.toList
     if r.Length = 0
         then None
