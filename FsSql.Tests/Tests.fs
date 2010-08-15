@@ -39,11 +39,9 @@ type Person = {
 }
 
 let createSchema() =
-    use cmd = conn.CreateCommand()
-    cmd.CommandText <- "create table person (id int primary key not null, name varchar not null, address int null)"
-    cmd.ExecuteNonQuery() |> ignore
-    cmd.CommandText <- "create table address (id int primary key not null, street varchar null, city varchar null)"
-    cmd.ExecuteNonQuery() |> ignore
+    let exec a = execNonQuery a [] |> ignore
+    exec "create table person (id int primary key not null, name varchar not null, address int null)"
+    exec "create table address (id int primary key not null, street varchar null, city varchar null)"
     ()
 
 createSchema()
