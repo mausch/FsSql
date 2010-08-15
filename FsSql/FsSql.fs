@@ -101,7 +101,7 @@ type Parameter = {
           ParameterName = parameterName
           Value = value }
 
-let addParameter (cmd: #IDbCommand) (p: Parameter) =
+let addParameter (p: Parameter) (cmd: #IDbCommand) =
     let par = cmd.CreateParameter()
     par.DbType <- p.DbType
     par.Direction <- p.Direction
@@ -110,7 +110,7 @@ let addParameter (cmd: #IDbCommand) (p: Parameter) =
     cmd.Parameters.Add par |> ignore
     cmd
 
-let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandType) (parameters: (string * DbType * obj) list) =
+let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandType) (parameters: Parameter list) =
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
     cmd.CommandType <- cmdType
@@ -120,20 +120,20 @@ let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType:
         p.DbType <- parameterType
         p.Value <- value
         cmd.Parameters.Add p |> ignore
-    parameters |> Seq.iter addParam
+    parameters |> Seq.iter (addParameter >> ignore)
     cmd
 
 let internal inferParameterDbType (p: string * obj) = 
-    fst p, Unchecked.defaultof<DbType>, snd p
+    Parameter.make(fst p, snd p)
 
 let inferParameterDbTypes (p: (string * obj) list) = 
     p |> List.map inferParameterDbType
 
-let execReader (connection: #IDbConnection) (sql: string) (parameters: (string * DbType * obj) list) =
+let execReader (connection: #IDbConnection) (sql: string) (parameters: Parameter list) =
     use cmd = prepareCommand connection sql CommandType.Text parameters
     cmd.ExecuteReader()
 
-let execNonQuery (connection: #IDbConnection) (sql: string) (parameters: (string * DbType * obj) list) =
+let execNonQuery (connection: #IDbConnection) (sql: string) (parameters: Parameter list) =
     use cmd = prepareCommand connection sql CommandType.Text parameters
     cmd.ExecuteNonQuery()
     
