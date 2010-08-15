@@ -33,7 +33,7 @@ module Seq =
                 log "datareader dispose"
                 dr.Dispose()}
     
-let PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
+let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
     if not (FSharpType.IsFunction typeof<'a>) then
         unbox (worker (query.Value, []))
     else
@@ -59,7 +59,7 @@ let PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a,
         let handler = proc types []
         unbox (FSharpValue.MakeFunction(typeof<'a>, handler))
 
-let sqlProcessor (conn: #IDbConnection) (sql: string, values: obj list) =
+let internal sqlProcessor (conn: #IDbConnection) (sql: string, values: obj list) =
     let stripFormatting s =
         let i = ref -1
         let eval (rxMatch: Match) =
@@ -78,18 +78,18 @@ let sqlProcessor (conn: #IDbConnection) (sql: string, values: obj list) =
     values |> Seq.iteri createParam
     cmd
 
-let sqlProcessorToDataReader a b = 
+let internal sqlProcessorToDataReader a b = 
     let cmd = sqlProcessor a b
     cmd.ExecuteReader()
 
-let sqlProcessorToUnit a b =
+let internal sqlProcessorToUnit a b =
     let cmd = sqlProcessor a b
     cmd.ExecuteNonQuery() |> ignore
 
 let execReaderF connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
 let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
 
-let prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandType) (parameters: (string * DbType * obj) list) =
+let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandType) (parameters: (string * DbType * obj) list) =
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
     cmd.CommandType <- cmdType
@@ -102,7 +102,7 @@ let prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandT
     parameters |> Seq.iter addParam
     cmd
 
-let inferParameterDbType (p: string * obj) = 
+let internal inferParameterDbType (p: string * obj) = 
     fst p, Unchecked.defaultof<DbType>, snd p
 
 let inferParameterDbTypes (p: (string * obj) list) = 
@@ -169,7 +169,7 @@ let execScalar a b c =
 
 let writeOption = 
     function
-    | None -> DBNull.Value :> obj
+    | None -> box DBNull.Value
     | Some x -> box x
 
 let findOne mapper query id =
