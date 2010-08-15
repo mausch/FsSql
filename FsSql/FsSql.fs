@@ -186,11 +186,3 @@ let getOne mapper query id =
     |> Seq.ofDataReader
     |> Seq.map mapper
     |> Enumerable.Single
-
-let fields t =
-    t.GetType()
-    |> FSharpType.GetRecordFields
-    |> Seq.map (fun p -> p.Name)
-
-let fieldList t =
-    String.Join(",", fields t |> Seq.toArray)
