@@ -60,6 +60,7 @@ let insertUser (p: Person) =
     execNonQuery 
         "insert into person (id, name) values (@id, @name)"
         (inferParameterDbTypes ["@id", upcast p.id; "@name", upcast p.name])
+        |> ignore
     //execNonQuery "insert into person (id, name) values (%d, %s)" p.id p.name
 
 let updateUser (p: Person) =
@@ -68,7 +69,7 @@ let updateUser (p: Person) =
 let countUsers () : int64 = 
     execScalar conn "select count(*) from person" []
 
-let deleteUser = execNonQueryF "delete person where id = %d"
+let deleteUser = execNonQueryF "delete person where id = %d" |> ignore
 
 [<Fact>]
 let ``insert then get``() = 

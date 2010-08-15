@@ -82,12 +82,12 @@ let internal sqlProcessorToDataReader a b =
     let cmd = sqlProcessor a b
     cmd.ExecuteReader()
 
-let internal sqlProcessorToUnit a b =
+let internal sqlProcessorNonQuery a b =
     let cmd = sqlProcessor a b
-    cmd.ExecuteNonQuery() |> ignore
+    cmd.ExecuteNonQuery()
 
 let execReaderF connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
-let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorToUnit connectionFactory) a
+let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorNonQuery connectionFactory) a
 
 let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandType) (parameters: (string * DbType * obj) list) =
     let cmd = connection.CreateCommand()
@@ -114,7 +114,7 @@ let execReader (connection: #IDbConnection) (sql: string) (parameters: (string *
 
 let execNonQuery (connection: #IDbConnection) (sql: string) (parameters: (string * DbType * obj) list) =
     use cmd = prepareCommand connection sql CommandType.Text parameters
-    cmd.ExecuteNonQuery() |> ignore
+    cmd.ExecuteNonQuery()
     
 let transactionalWithIsolation (isolation: IsolationLevel) (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a) =
     let tx = conn.BeginTransaction(isolation)
