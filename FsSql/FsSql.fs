@@ -24,7 +24,7 @@ module Seq =
                 then DictDataRecord(dr) :> IDataRecord
                 else null
         let lockedRead = lockReader read
-        let records = Seq.initInfinite (fun _ -> read()())
+        let records = Seq.initInfinite (fun _ -> lockedRead())
                       |> Seq.takeWhile (fun r -> r <> null)
         seq {
             try

@@ -137,14 +137,14 @@ let ``datareader is parallelizable`` () =
 
     log "inserting"
     let insert () =
-        for i in 100000..400000 do
+        for i in 100000000..100050000 do
             insertUser {id = i; name = "pepe" + i.ToString(); address = None}
     let insert = transactionalWithIsolation IsolationLevel.ReadCommitted conn (fun _ -> insert)
     insert()
     log "reading"
-    let primes = runQuery "select * from person"
+    let primes = execReader conn "select * from person" []
                  |> Seq.ofDataReader
                  |> Seq.map (fun r -> (r |> readInt "id").Value)
-                 |> Seq.filter isPrime
-                 |> Seq.length
+                 |> PSeq.filter isPrime
+                 |> PSeq.length
     logf "%d primes" primes
