@@ -123,8 +123,9 @@ let ``transaction with option`` () =
         5
 
     let someTran = transactional2 conn someTran
-    match someTran() with
-    | Success v -> printfn "Success %d" v
+    let result = someTran()
+    match result with
+    | Success v -> printfn "Success %d" v; raise <| Exception("transaction should have failed!")
     | Failure e -> printfn "Failed with exception %A" e
     Assert.Equal(0L, countUsers())
     ()
