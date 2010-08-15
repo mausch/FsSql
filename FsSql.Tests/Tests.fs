@@ -105,23 +105,36 @@ let ``transaction with option`` () =
     Assert.Equal(0L, countUsers())
     ()
 
+// Tests whether n is prime - expects n > 1
+// From http://tomasp.net/blog/fsparallelops.aspx
+let isPrime n =
+    // calculate how large divisors should we test..
+    let max = int (sqrt (float n))
+    // try to divide n by 2..max (stops when divisor is found)
+    not ({ 2..max } |> Seq.filter (fun d -> n%d = 0) |> Enumerable.Any)
+
+[<Fact>]
+let ``pseq isprime`` () =
+    let p = {100000..800000}
+            |> PSeq.filter isPrime
+            |> PSeq.length
+
+    printfn "%d primes" p
+    ()
+
 [<Fact>]
 let ``datareader is parallelizable`` () =
-    // Tests whether n is prime - expects n > 1
-    // From http://tomasp.net/blog/fsparallelops.aspx
-    let isPrime n =
-      // calculate how large divisors should we test..
-      let max = int (sqrt (float n))
-      // try to divide n by 2..max (stops when divisor is found)
-      not ({ 2..max } |> Seq.filter (fun d -> n%d = 0) |> Enumerable.Any)
 
-    printfn "inserting"
-    for i in 10000..100000 do
-        insertUser {id = i; name = "pepe" + i.ToString(); address = None}
-    printfn "reading"
+    log "inserting"
+    let insert () =
+        for i in 100000..200000 do
+            insertUser {id = i; name = "pepe" + i.ToString(); address = None}
+    let insert = transactionalWithIsolation IsolationLevel.ReadCommitted conn (fun _ -> insert)
+    insert()
+    log "reading"
     let primes = runQuery "select * from person"
                  |> Seq.ofDataReader
                  |> Seq.map (fun r -> (r |> readInt "id").Value)
                  |> PSeq.filter isPrime
                  |> PSeq.length
-    printfn "%d primes" primes
+    logf "%d primes" primes
