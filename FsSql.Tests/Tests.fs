@@ -3,6 +3,7 @@
 open Xunit
 open System
 open System.Data
+open System.Data.SQLite
 open System.Linq
 open FsSql
 open Microsoft.FSharp.Collections
@@ -125,6 +126,21 @@ let ``transaction committed`` () =
     let someTran = transactional conn (expand someTran)
     someTran()
     Assert.Equal(2L, countUsers())
+    ()
+
+[<Fact>]
+let ``nested transactions are NOT supported`` () =
+    let someTran conn () =
+        let subtran conn () = 
+            insertUser {id = 3; name = "jorge"; address = None}
+            failwith "this fails"
+        (transactional conn subtran)()
+        insertUser {id = 1; name = "pepe"; address = None}
+        insertUser {id = 2; name = "jose"; address = None}
+        ()
+
+    let someTran = transactional conn someTran
+    Assert.Throws<SQLiteException> someTran |> ignore
     ()
 
 [<Fact>]
