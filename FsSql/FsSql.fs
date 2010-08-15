@@ -101,7 +101,7 @@ type Parameter = {
           ParameterName = parameterName
           Value = value }
 
-let addParameter (p: Parameter) (cmd: #IDbCommand) =
+let addParameter (cmd: #IDbCommand) (p: Parameter) =
     let par = cmd.CreateParameter()
     par.DbType <- p.DbType
     par.Direction <- p.Direction
@@ -114,7 +114,7 @@ let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType:
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
     cmd.CommandType <- cmdType
-    parameters |> Seq.iter (addParameter >> ignore)
+    parameters |> Seq.iter (addParameter cmd >> ignore)
     cmd
 
 let internal inferParameterDbType (p: string * obj) = 
