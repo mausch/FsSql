@@ -132,15 +132,17 @@ let ``pseq isprime`` () =
     printfn "%d primes" p
     ()
 
-[<Fact>]
-let ``datareader is parallelizable`` () =
-
+let insertUsers () =
     log "inserting"
     let insert () =
         for i in 100000000..100050000 do
             insertUser {id = i; name = "pepe" + i.ToString(); address = None}
     let insert = transactionalWithIsolation IsolationLevel.ReadCommitted conn (fun _ -> insert)
     insert()
+    
+[<Fact>]
+let ``datareader is parallelizable`` () =
+    insertUsers()
     log "reading"
     let primes = execReader conn "select * from person" []
                  |> Seq.ofDataReader
@@ -148,3 +150,13 @@ let ``datareader is parallelizable`` () =
                  |> PSeq.filter isPrime
                  |> PSeq.length
     logf "%d primes" primes
+
+[<Fact>]
+let ``datareader to seq is cacheable`` () =
+    insertUsers()
+    let all = execReader conn "select * from person" []
+               |> Seq.ofDataReader
+               |> Seq.cache
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
+    ()

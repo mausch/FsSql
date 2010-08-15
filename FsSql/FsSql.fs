@@ -136,7 +136,7 @@ let transactional2 (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a
         tx.Rollback()
         Failure e
 
-let isNull a = DBNull.Value.Equals a    
+let isNull a = DBNull.Value.Equals a
 
 let readField (field: string) (record: #IDataRecord) : 'a option =
     let o = record.[field]
