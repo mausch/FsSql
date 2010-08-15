@@ -166,10 +166,24 @@ let ``datareader to seq is cacheable`` () =
 let ``datareader to seq is cacheable 2`` () =
     insertUsers()
     // this doesn't dispose the data reader either!
-    use all = execReader conn "select * from person" []
-    let all = all
+    use reader = execReader conn "select * from person" []
+    let all = reader
               |> Seq.ofDataReader
               |> Seq.cache
     all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
     all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
+    ()
+
+[<Fact>]
+let ``datareader to seq is cacheable 3`` () =
+    insertUsers()
+    // this doesn't dispose the data reader either!
+    let reader = execReader conn "select * from person" []
+    let withReader reader =
+        let all = reader
+                  |> Seq.ofDataReader
+                  |> Seq.cache
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
+    using reader withReader
     ()
