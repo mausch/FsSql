@@ -5,7 +5,7 @@ open System.Data
 open FsSqlPrelude
 open FsSqlImpl
 
-let ofDataReader (dr: IDataReader) =
+let ofDataReader (dr: #IDataReader) =
     log "started ofDataReader"
     let lockObj = obj()
     let lockReader f = lock lockObj f
