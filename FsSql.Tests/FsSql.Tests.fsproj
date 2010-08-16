@@ -52,6 +52,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Tests.fs" />
   </ItemGroup>
   <ItemGroup>

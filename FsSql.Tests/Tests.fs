@@ -77,6 +77,7 @@ let countUsers conn : int64 =
 let deleteUser conn = execNonQueryF conn "delete person where id = %d" |> ignore
 
 [<Test>]
+[<Parallelizable>]
 let ``insert then get``() = 
     withDatabase (fun conn ->
         insertUser conn {id = 1; name = "pepe"; address = None}
@@ -86,6 +87,7 @@ let ``insert then get``() =
     ()
 
 [<Test>]
+[<Parallelizable>]
 let ``find non-existent record``() =
     withDatabase (fun conn ->
         let p = findUser conn 39393
@@ -93,6 +95,7 @@ let ``find non-existent record``() =
         printfn "end test")
 
 [<Test>]
+[<Parallelizable>]
 let ``find existent record``() =
     withDatabase (fun conn ->
         insertUser conn {id = 1; name = "pepe"; address = None}
@@ -101,6 +104,7 @@ let ``find existent record``() =
         printfn "end test")
 
 [<Test>]
+[<Parallelizable>]
 let ``get many``() =
     withDatabase (fun conn ->
         for i in 1..100 do
@@ -111,6 +115,7 @@ let ``get many``() =
         printfn "end!")
 
 [<Test>]
+[<Parallelizable>]
 let ``transaction with exception`` () =
     let someTran conn =
         insertUser conn {id = 1; name = "pepe"; address = None}
@@ -126,6 +131,7 @@ let ``transaction with exception`` () =
     ()
 
 [<Test>]
+[<Parallelizable>]
 let ``transaction committed`` () =
     let someTran conn =
         insertUser conn {id = 1; name = "pepe"; address = None}
@@ -139,6 +145,7 @@ let ``transaction committed`` () =
     ()
 
 [<Test>]
+[<Parallelizable>]
 let ``nested transactions are NOT supported`` () =
     let someTran conn () =
         let subtran conn () = 
@@ -155,6 +162,7 @@ let ``nested transactions are NOT supported`` () =
     ()
 
 [<Test>]
+[<Parallelizable>]
 let ``transaction with option`` () =
     let someTran conn () =
         insertUser conn {id = 1; name = "pepe"; address = None}
@@ -180,6 +188,7 @@ let isPrime n =
     not ({ 2..max } |> Seq.filter (fun d -> n%d = 0) |> Enumerable.Any)
 
 [<Test>]
+[<Parallelizable>]
 let ``pseq isprime`` () =
     let p = {100000..800000}
             |> PSeq.filter isPrime
@@ -197,6 +206,7 @@ let insertUsers conn =
     insert()
     
 [<Test>]
+[<Parallelizable>]
 let ``datareader is parallelizable`` () =
     withDatabase (fun conn ->
         insertUsers conn
@@ -222,6 +232,7 @@ let ``datareader to seq is forward-only``() =
     
 
 [<Test>]
+[<Parallelizable>]
 let ``datareader to seq is cacheable`` () =
     withDatabase (fun conn ->
         insertUsers conn
@@ -235,6 +246,7 @@ let ``datareader to seq is cacheable`` () =
     ()
 
 [<Test>]
+[<Parallelizable>]
 let ``datareader to seq is cacheable 2`` () =
     withDatabase (fun conn ->
         insertUsers conn
@@ -249,6 +261,7 @@ let ``datareader to seq is cacheable 2`` () =
     ()
 
 [<Test>]
+[<Parallelizable>]
 let ``datareader to seq is cacheable 3`` () =
     withDatabase (fun conn ->
         insertUsers conn
@@ -265,6 +278,7 @@ let ``datareader to seq is cacheable 3`` () =
     ()
 
 [<Test>]
+[<Parallelizable>]
 let ``datareader with lazylist`` () =
     withDatabase (fun conn ->
         insertUsers conn
