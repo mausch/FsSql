@@ -21,12 +21,6 @@ let createConnection() =
     conn.Open()
     conn
 
-let conn = createConnection()
-
-let execNonQueryF a = execNonQueryF conn a
-let execNonQuery a = execNonQuery conn a
-let runQuery a = execReaderF conn a
-
 type Address = {
     id: int
     street: string
@@ -39,123 +33,138 @@ type Person = {
     address: Address option
 }
 
-let createSchema() =
-    let exec a = execNonQuery a [] |> ignore
+let createSchema conn =
+    let exec a = FsSql.execNonQuery conn a [] |> ignore
     exec "create table person (id int primary key not null, name varchar not null, address int null)"
     exec "create table address (id int primary key not null, street varchar null, city varchar null)"
     ()
 
-createSchema()
+let createConnectionAndSchema() =
+    let conn = createConnection()
+    createSchema conn
+    conn
+
+let withDatabase f = withResource createConnectionAndSchema (fun c -> c.Dispose()) f
 
 let userMapper r = 
     { id = (readInt "id" r).Value ; name = (readString "name" r).Value; address = None}
 
-let getUser = 
-    runQuery "select * from person where id = %d" |> getOne userMapper
+let selectById conn = execReaderF conn "select * from person where id = %d"
 
-let findUser =
-    runQuery "select * from person where id = %d" |> findOne userMapper
+let getUser conn =
+    selectById conn |> getOne userMapper
 
-let insertUser (p: Person) =
-    execNonQuery 
+let findUser conn =
+    selectById conn |> findOne userMapper
+
+let insertUser conn (p: Person) =
+    execNonQuery conn
         "insert into person (id, name) values (@id, @name)"
         (inferParameterDbTypes ["@id", upcast p.id; "@name", upcast p.name])
         |> ignore
     //execNonQuery "insert into person (id, name) values (%d, %s)" p.id p.name
 
-let updateUser (p: Person) =
-    execNonQueryF "update person set name = %s where id = %d" p.name p.id
+let updateUser conn (p: Person) =
+    execNonQueryF conn "update person set name = %s where id = %d" p.name p.id
 
-let countUsers () : int64 = 
+let countUsers conn : int64 = 
     execScalar conn "select count(*) from person" []
 
-let deleteUser = execNonQueryF "delete person where id = %d" |> ignore
+let deleteUser conn = execNonQueryF conn "delete person where id = %d" |> ignore
 
 [<Fact>]
 let ``insert then get``() = 
-    insertUser {id = 1; name = "pepe"; address = None}
-    printfn "count: %d" (countUsers())
-    let p = getUser 1
-    printfn "id=%d, name=%s" p.id p.name
+    withDatabase (fun conn ->
+        insertUser conn {id = 1; name = "pepe"; address = None}
+        printfn "count: %d" (countUsers conn)
+        let p = getUser conn 1
+        printfn "id=%d, name=%s" p.id p.name)
     ()
 
 [<Fact>]
 let ``find non-existent record``() =
-    let p = findUser 39393
-    Assert.True p.IsNone
-    printfn "end test"
+    withDatabase (fun conn ->
+        let p = findUser conn 39393
+        Assert.True p.IsNone
+        printfn "end test")
 
 [<Fact>]
 let ``find existent record``() =
-    insertUser {id = 1; name = "pepe"; address = None}
-    let p = findUser 1
-    Assert.True p.IsSome
-    printfn "end test"
+    withDatabase (fun conn ->
+        insertUser conn {id = 1; name = "pepe"; address = None}
+        let p = findUser conn 1
+        Assert.True p.IsSome
+        printfn "end test")
 
 [<Fact>]
 let ``get many``() =
-    for i in 1..100 do
-        insertUser {id = i; name = "pepe" + i.ToString(); address = None}
-    let first10 = runQuery "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
-    for i in first10 do
-        printfn "%d" (readInt "id" i).Value
-    printfn "end!"
+    withDatabase (fun conn ->
+        for i in 1..100 do
+            insertUser conn {id = i; name = "pepe" + i.ToString(); address = None}
+        let first10 = execReaderF conn "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
+        for i in first10 do
+            printfn "%d" (readInt "id" i).Value
+        printfn "end!")
 
 [<Fact>]
 let ``transaction with exception`` () =
-    let someTran () =
-        insertUser {id = 1; name = "pepe"; address = None}
-        insertUser {id = 2; name = "jose"; address = None}
+    let someTran conn =
+        insertUser conn {id = 1; name = "pepe"; address = None}
+        insertUser conn {id = 2; name = "jose"; address = None}
         failwith "Bla"
         ()
 
-    let someTran = transactional conn (expand someTran)
-    let someTran = catch () someTran
-    someTran()
-    Assert.Equal(0L, countUsers())
+    withDatabase (fun conn ->
+        let someTran = transactional conn (expand someTran)
+        let someTran = catch () someTran
+        someTran conn
+        Assert.Equal(0L, countUsers conn))
     ()
 
 [<Fact>]
 let ``transaction committed`` () =
-    let someTran () =
-        insertUser {id = 1; name = "pepe"; address = None}
-        insertUser {id = 2; name = "jose"; address = None}
+    let someTran conn =
+        insertUser conn {id = 1; name = "pepe"; address = None}
+        insertUser conn {id = 2; name = "jose"; address = None}
         ()
 
-    let someTran = transactional conn (expand someTran)
-    someTran()
-    Assert.Equal(2L, countUsers())
+    withDatabase (fun conn ->
+        let someTran = transactional conn (expand someTran)
+        someTran conn
+        Assert.Equal(2L, countUsers conn))
     ()
 
 [<Fact>]
 let ``nested transactions are NOT supported`` () =
     let someTran conn () =
         let subtran conn () = 
-            insertUser {id = 3; name = "jorge"; address = None}
+            insertUser conn {id = 3; name = "jorge"; address = None}
             failwith "this fails"
         (transactional conn subtran)()
-        insertUser {id = 1; name = "pepe"; address = None}
-        insertUser {id = 2; name = "jose"; address = None}
+        insertUser conn {id = 1; name = "pepe"; address = None}
+        insertUser conn {id = 2; name = "jose"; address = None}
         ()
 
-    let someTran = transactional conn someTran
-    Assert.Throws<SQLiteException> someTran |> ignore
+    withDatabase (fun conn ->
+        let someTran = transactional conn someTran
+        Assert.Throws<SQLiteException> someTran |> ignore)
     ()
 
 [<Fact>]
 let ``transaction with option`` () =
     let someTran conn () =
-        insertUser {id = 1; name = "pepe"; address = None}
-        insertUser {id = 2; name = "jose"; address = None}
+        insertUser conn {id = 1; name = "pepe"; address = None}
+        insertUser conn {id = 2; name = "jose"; address = None}
         failwith "Bla"
         5
 
-    let someTran = transactional2 conn someTran
-    let result = someTran()
-    match result with
-    | Success v -> printfn "Success %d" v; raise <| Exception("transaction should have failed!")
-    | Failure e -> printfn "Failed with exception %A" e
-    Assert.Equal(0L, countUsers())
+    withDatabase (fun conn ->
+        let someTran = transactional2 conn someTran
+        let result = someTran()
+        match result with
+        | Success v -> printfn "Success %d" v; raise <| Exception("transaction should have failed!")
+        | Failure e -> printfn "Failed with exception %A" e
+        Assert.Equal(0L, countUsers conn))
     ()
 
 // Tests whether n is prime - expects n > 1
@@ -175,84 +184,94 @@ let ``pseq isprime`` () =
     printfn "%d primes" p
     ()
 
-let insertUsers () =
+let insertUsers conn =
     log "inserting"
-    let insert () =
+    let insert conn () =
         for i in 100000000..100050000 do
-            insertUser {id = i; name = "pepe" + i.ToString(); address = None}
-    let insert = transactionalWithIsolation IsolationLevel.ReadCommitted conn (fun _ -> insert)
+            insertUser conn {id = i; name = "pepe" + i.ToString(); address = None}
+    let insert = transactionalWithIsolation IsolationLevel.ReadCommitted conn insert
     insert()
     
 [<Fact>]
 let ``datareader is parallelizable`` () =
-    insertUsers()
-    log "reading"
-    let primes = execReader conn "select * from person" []
-                 |> Seq.ofDataReader
-                 |> Seq.map (fun r -> (r |> readInt "id").Value)
-                 |> PSeq.filter isPrime
-                 |> PSeq.length
-    logf "%d primes" primes
+    withDatabase (fun conn ->
+        insertUsers conn
+        log "reading"
+        let primes = execReader conn "select * from person" []
+                     |> Seq.ofDataReader
+                     |> Seq.map (fun r -> (r |> readInt "id").Value)
+                     |> PSeq.filter isPrime
+                     |> PSeq.length
+        logf "%d primes" primes)
 
 [<Fact>]
 let ``datareader to seq is forward-only``() =
-    insertUsers()
-    let all = execReader conn "select * from person" []
-              |> Seq.ofDataReader
-    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
-    let secondIter() = 
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
-    Assert.Throws<InvalidOperationException> secondIter |> ignore
+    withDatabase (fun conn ->
+        insertUsers conn
+        let all = execReader conn "select * from person" []
+                  |> Seq.ofDataReader
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
+        let secondIter() = 
+            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
+        Assert.Throws<InvalidOperationException> secondIter |> ignore)
     ()
     
 
 [<Fact>]
 let ``datareader to seq is cacheable`` () =
-    insertUsers()
-    // this doesn't dispose the data reader
-    let all = execReader conn "select * from person" []
-               |> Seq.ofDataReader
-               |> Seq.cache
-    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
-    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
+    withDatabase (fun conn ->
+        insertUsers conn
+        // this doesn't dispose the data reader
+        let all = execReader conn "select * from person" []
+                   |> Seq.ofDataReader
+                   |> Seq.cache
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
+    )
     ()
 
 [<Fact>]
 let ``datareader to seq is cacheable 2`` () =
-    insertUsers()
-    // this doesn't dispose the data reader either!
-    use reader = execReader conn "select * from person" []
-    let all = reader
-              |> Seq.ofDataReader
-              |> Seq.cache
-    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
-    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
-    ()
-
-[<Fact>]
-let ``datareader to seq is cacheable 3`` () =
-    insertUsers()
-    // this doesn't dispose the data reader either!
-    let reader = execReader conn "select * from person" []
-    let withReader reader =
+    withDatabase (fun conn ->
+        insertUsers conn
+        // this doesn't dispose the data reader either!
+        use reader = execReader conn "select * from person" []
         let all = reader
                   |> Seq.ofDataReader
                   |> Seq.cache
         all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
         all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
-    using reader withReader
+    )
+    ()
+
+[<Fact>]
+let ``datareader to seq is cacheable 3`` () =
+    withDatabase (fun conn ->
+        insertUsers conn
+        // this doesn't dispose the data reader either!
+        let reader = execReader conn "select * from person" []
+        let withReader reader =
+            let all = reader
+                      |> Seq.ofDataReader
+                      |> Seq.cache
+            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
+            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
+        using reader withReader
+    )
     ()
 
 [<Fact>]
 let ``datareader with lazylist`` () =
-    insertUsers()
-    // this doesn't dispose the data reader either!
-    let reader = execReader conn "select * from person" []
-    let withReader reader =
-        let all = reader
-                  |> Seq.ofDataReader
-                  |> LazyList.ofSeq
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
-    using reader withReader
+    withDatabase (fun conn ->
+        insertUsers conn
+        // this doesn't dispose the data reader either!
+        let reader = execReader conn "select * from person" []
+        let withReader reader =
+            let all = reader
+                      |> Seq.ofDataReader
+                      |> LazyList.ofSeq
+            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
+            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
+        using reader withReader
+    )
     ()
