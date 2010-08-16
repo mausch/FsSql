@@ -6,6 +6,7 @@ open System.Data
 open System.Data.SQLite
 open System.Linq
 open FsSql
+open FsSqlPrelude
 open Microsoft.FSharp.Collections
 
 let catch defaultValue f a =

@@ -41,6 +41,7 @@
     <Reference Include="System.Transactions" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="prelude.fs" />
     <Compile Include="DictDataRecord.fs" />
     <Compile Include="FsSql.fs" />
   </ItemGroup>

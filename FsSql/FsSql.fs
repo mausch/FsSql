@@ -8,9 +8,7 @@ open System.Linq
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
 open FsSqlImpl
-
-let log s = printfn "%A: %s" DateTime.Now s
-let logf a = sprintf a >> log
+open FsSqlPrelude
 
 module Seq =
     let ofDataReader (dr: IDataReader) =
