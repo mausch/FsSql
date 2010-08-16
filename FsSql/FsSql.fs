@@ -9,27 +9,6 @@ open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
 open FsSqlImpl
 open FsSqlPrelude
-
-module Seq =
-    let ofDataReader (dr: IDataReader) =
-        log "started ofDataReader"
-        let lockObj = obj()
-        let lockReader f = lock lockObj f
-        let read()() =            
-            let h = dr.Read()
-            //logf "read record %A" dr.["id"]
-            if h
-                then DictDataRecord(dr) :> IDataRecord
-                else null
-        let lockedRead = lockReader read
-        let records = Seq.initInfinite (fun _ -> lockedRead())
-                      |> Seq.takeWhile (fun r -> r <> null)
-        seq {
-            try
-                yield! records
-            finally
-                log "datareader dispose"
-                dr.Dispose()}
     
 let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
     if not (FSharpType.IsFunction typeof<'a>) then
