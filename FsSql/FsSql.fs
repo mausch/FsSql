@@ -97,7 +97,7 @@ let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType:
 let internal inferParameterDbType (p: string * obj) = 
     Parameter.make(fst p, snd p)
 
-let inferParameterDbTypes (p: (string * obj) list) = 
+let parameters (p: (string * obj) list) = 
     p |> List.map inferParameterDbType
 
 let execReader (connection: #IDbConnection) (sql: string) (parameters: Parameter list) =
