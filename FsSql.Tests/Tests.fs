@@ -1,6 +1,6 @@
 ﻿module FsSql.Tests
 
-open Xunit
+open MbUnit.Framework
 open System
 open System.Data
 open System.Data.SQLite
@@ -8,6 +8,10 @@ open System.Linq
 open FsSql
 open FsSqlPrelude
 open Microsoft.FSharp.Collections
+
+let assertThrows<'e when 'e :> exn> f =
+    let action = Gallio.Common.Action f
+    Assert.Throws<'e> action |> ignore
 
 let catch defaultValue f a =
     try
@@ -72,7 +76,7 @@ let countUsers conn : int64 =
 
 let deleteUser conn = execNonQueryF conn "delete person where id = %d" |> ignore
 
-[<Fact>]
+[<Test>]
 let ``insert then get``() = 
     withDatabase (fun conn ->
         insertUser conn {id = 1; name = "pepe"; address = None}
@@ -81,22 +85,22 @@ let ``insert then get``() =
         printfn "id=%d, name=%s" p.id p.name)
     ()
 
-[<Fact>]
+[<Test>]
 let ``find non-existent record``() =
     withDatabase (fun conn ->
         let p = findUser conn 39393
-        Assert.True p.IsNone
+        Assert.IsTrue p.IsNone
         printfn "end test")
 
-[<Fact>]
+[<Test>]
 let ``find existent record``() =
     withDatabase (fun conn ->
         insertUser conn {id = 1; name = "pepe"; address = None}
         let p = findUser conn 1
-        Assert.True p.IsSome
+        Assert.IsTrue p.IsSome
         printfn "end test")
 
-[<Fact>]
+[<Test>]
 let ``get many``() =
     withDatabase (fun conn ->
         for i in 1..100 do
@@ -106,7 +110,7 @@ let ``get many``() =
             printfn "%d" (readInt "id" i).Value
         printfn "end!")
 
-[<Fact>]
+[<Test>]
 let ``transaction with exception`` () =
     let someTran conn =
         insertUser conn {id = 1; name = "pepe"; address = None}
@@ -118,10 +122,10 @@ let ``transaction with exception`` () =
         let someTran = transactional conn (expand someTran)
         let someTran = catch () someTran
         someTran conn
-        Assert.Equal(0L, countUsers conn))
+        Assert.AreEqual(0L, countUsers conn))
     ()
 
-[<Fact>]
+[<Test>]
 let ``transaction committed`` () =
     let someTran conn =
         insertUser conn {id = 1; name = "pepe"; address = None}
@@ -131,10 +135,10 @@ let ``transaction committed`` () =
     withDatabase (fun conn ->
         let someTran = transactional conn (expand someTran)
         someTran conn
-        Assert.Equal(2L, countUsers conn))
+        Assert.AreEqual(2L, countUsers conn))
     ()
 
-[<Fact>]
+[<Test>]
 let ``nested transactions are NOT supported`` () =
     let someTran conn () =
         let subtran conn () = 
@@ -147,10 +151,10 @@ let ``nested transactions are NOT supported`` () =
 
     withDatabase (fun conn ->
         let someTran = transactional conn someTran
-        Assert.Throws<SQLiteException> someTran |> ignore)
+        assertThrows<SQLiteException> someTran)
     ()
 
-[<Fact>]
+[<Test>]
 let ``transaction with option`` () =
     let someTran conn () =
         insertUser conn {id = 1; name = "pepe"; address = None}
@@ -164,7 +168,7 @@ let ``transaction with option`` () =
         match result with
         | Success v -> printfn "Success %d" v; raise <| Exception("transaction should have failed!")
         | Failure e -> printfn "Failed with exception %A" e
-        Assert.Equal(0L, countUsers conn))
+        Assert.AreEqual(0L, countUsers conn))
     ()
 
 // Tests whether n is prime - expects n > 1
@@ -175,7 +179,7 @@ let isPrime n =
     // try to divide n by 2..max (stops when divisor is found)
     not ({ 2..max } |> Seq.filter (fun d -> n%d = 0) |> Enumerable.Any)
 
-[<Fact>]
+[<Test>]
 let ``pseq isprime`` () =
     let p = {100000..800000}
             |> PSeq.filter isPrime
@@ -192,7 +196,7 @@ let insertUsers conn =
     let insert = transactionalWithIsolation IsolationLevel.ReadCommitted conn insert
     insert()
     
-[<Fact>]
+[<Test>]
 let ``datareader is parallelizable`` () =
     withDatabase (fun conn ->
         insertUsers conn
@@ -204,7 +208,7 @@ let ``datareader is parallelizable`` () =
                      |> PSeq.length
         logf "%d primes" primes)
 
-[<Fact>]
+[<Test>]
 let ``datareader to seq is forward-only``() =
     withDatabase (fun conn ->
         insertUsers conn
@@ -213,11 +217,11 @@ let ``datareader to seq is forward-only``() =
         all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> readInt "id").Value)
         let secondIter() = 
             all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> readString "name").Value)
-        Assert.Throws<InvalidOperationException> secondIter |> ignore)
+        assertThrows<InvalidOperationException> secondIter)
     ()
     
 
-[<Fact>]
+[<Test>]
 let ``datareader to seq is cacheable`` () =
     withDatabase (fun conn ->
         insertUsers conn
@@ -230,7 +234,7 @@ let ``datareader to seq is cacheable`` () =
     )
     ()
 
-[<Fact>]
+[<Test>]
 let ``datareader to seq is cacheable 2`` () =
     withDatabase (fun conn ->
         insertUsers conn
@@ -244,7 +248,7 @@ let ``datareader to seq is cacheable 2`` () =
     )
     ()
 
-[<Fact>]
+[<Test>]
 let ``datareader to seq is cacheable 3`` () =
     withDatabase (fun conn ->
         insertUsers conn
@@ -260,7 +264,7 @@ let ``datareader to seq is cacheable 3`` () =
     )
     ()
 
-[<Fact>]
+[<Test>]
 let ``datareader with lazylist`` () =
     withDatabase (fun conn ->
         insertUsers conn

@@ -35,6 +35,12 @@
   <ItemGroup>
     <Reference Include="FSharp.PowerPack, Version=1.9.9.9, Culture=neutral, PublicKeyToken=a19089b1c74d0809" />
     <Reference Include="FSharp.PowerPack.Parallel.Seq, Version=1.9.9.9, Culture=neutral, PublicKeyToken=a19089b1c74d0809" />
+    <Reference Include="Gallio">
+      <HintPath>C:\prg\FsSql\lib\Gallio.dll</HintPath>
+    </Reference>
+    <Reference Include="MbUnit">
+      <HintPath>C:\prg\FsSql\lib\MbUnit.dll</HintPath>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core" />
     <Reference Include="System" />
@@ -44,9 +50,6 @@
       <HintPath>C:\prg\FsSql\lib\System.Data.SQLite.DLL</HintPath>
     </Reference>
     <Reference Include="System.Numerics" />
-    <Reference Include="xunit">
-      <HintPath>C:\prg\FsSql\lib\xunit.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Tests.fs" />
