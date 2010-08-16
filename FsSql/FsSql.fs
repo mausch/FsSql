@@ -1,4 +1,4 @@
-﻿module FsSql
+﻿module Sql
 
 open System
 open System.Collections.Generic
