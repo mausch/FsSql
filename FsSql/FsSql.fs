@@ -179,3 +179,6 @@ let getOne mapper query id =
     |> Seq.ofDataReader
     |> Seq.map mapper
     |> Enumerable.Single
+
+let withNewConnection (createConnection: unit -> #IDbConnection) f =
+    using (createConnection()) f

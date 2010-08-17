@@ -4,6 +4,7 @@ open MbUnit.Framework
 open System
 open System.Data
 open System.Data.SQLite
+open System.IO
 open System.Linq
 open FsSqlPrelude
 open Microsoft.FSharp.Collections
@@ -21,6 +22,11 @@ let expand f = fun _ -> f
 
 let createConnection() =
     let conn = new System.Data.SQLite.SQLiteConnection("Data Source=:memory:;Version=3;New=True")
+    conn.Open()
+    conn
+
+let createPersistentConnection() =
+    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True")
     conn.Open()
     conn
 
@@ -47,7 +53,19 @@ let createConnectionAndSchema() =
     createSchema conn
     conn
 
-let withDatabase f = withResource createConnectionAndSchema (fun c -> c.Dispose()) f
+let withDatabase f = 
+    let createConnectionAndSchema() =
+        let conn = createConnection()
+        createSchema conn
+        conn
+    withResource createConnectionAndSchema (fun c -> c.Dispose()) f
+
+let withPersistentDatabase f = 
+    let createConnectionAndSchema() =
+        let conn = createPersistentConnection()
+        createSchema conn
+        conn
+    withResource createConnectionAndSchema (fun c -> c.Dispose()) f
 
 let userMapper r = 
     { id = (Sql.readInt "id" r).Value ; name = (Sql.readString "name" r).Value; address = None}
@@ -291,4 +309,15 @@ let ``datareader with lazylist`` () =
             all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> Sql.readString "name").Value)
         using reader withReader
     )
+    ()
+
+[<Test>]
+let ``connection management 1``() =
+    File.Delete "test.db" 
+    createSchema (createPersistentConnection())
+    let withConnection = Sql.withNewConnection createPersistentConnection
+    let execReader = Sql.withNewConnection createPersistentConnection Sql.execReader
+    let execNonQuery = Sql.withNewConnection createPersistentConnection Sql.execNonQuery
+    let all = execReader "select * from person" [] |> List.ofDataReader
+    printfn "count: %d" all.Length
     ()
