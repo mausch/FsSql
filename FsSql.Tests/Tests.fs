@@ -19,6 +19,7 @@ let catch defaultValue f a =
     with e -> defaultValue
 
 let expand f = fun _ -> f
+let delay f = fun() -> f
 
 let createConnection() =
     let conn = new System.Data.SQLite.SQLiteConnection("Data Source=:memory:;Version=3;New=True")
@@ -93,114 +94,134 @@ let countUsers conn : int64 =
 
 let deleteUser conn = Sql.execNonQueryF conn "delete person where id = %d" |> ignore
 
+let insertThenGet conn = 
+    insertUser conn {id = 1; name = "pepe"; address = None}
+    printfn "count: %d" (countUsers conn)
+    let p = getUser conn 1
+    printfn "id=%d, name=%s" p.id p.name
+
 [<Test>]
 [<Parallelizable>]
 let ``insert then get``() = 
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        insertUser conn {id = 1; name = "pepe"; address = None}
-        printfn "count: %d" (countUsers conn)
-        let p = getUser conn 1
-        printfn "id=%d, name=%s" p.id p.name)
+        insertThenGet conn)
     ()
+
+let findNonExistentRecord conn = 
+    let p = findUser conn 39393
+    Assert.IsTrue p.IsNone
+    printfn "end test"
 
 [<Test>]
 [<Parallelizable>]
 let ``find non-existent record``() =
     withDatabase (fun conn ->
-        let p = findUser (Sql.withConnection conn) 39393
-        Assert.IsTrue p.IsNone
-        printfn "end test")
+        findNonExistentRecord (Sql.withConnection conn))
+
+let findExistentRecord conn = 
+    insertUser conn {id = 1; name = "pepe"; address = None}
+    let p = findUser conn 1
+    Assert.IsTrue p.IsSome
+    printfn "end test"
 
 [<Test>]
 [<Parallelizable>]
 let ``find existent record``() =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        insertUser conn {id = 1; name = "pepe"; address = None}
-        let p = findUser conn 1
-        Assert.IsTrue p.IsSome
-        printfn "end test")
+        findExistentRecord conn)
+
+
+let getMany conn = 
+    for i in 1..100 do
+        insertUser conn {id = i; name = "pepe" + i.ToString(); address = None}
+    let first10 = Sql.execReaderF conn "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
+    for i in first10 do
+        printfn "%d" (i?id).Value
+    printfn "end!"
 
 [<Test>]
 [<Parallelizable>]
 let ``get many``() =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        for i in 1..100 do
-            insertUser conn {id = i; name = "pepe" + i.ToString(); address = None}
-        let first10 = Sql.execReaderF conn "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
-        for i in first10 do
-            printfn "%d" (i?id).Value
-        printfn "end!")
+        getMany conn)
+
+let someTranAndFail conn =
+    insertUser conn {id = 1; name = "pepe"; address = None}
+    insertUser conn {id = 2; name = "jose"; address = None}
+    failwith "Bla"
+    ()
+
+let transactionWithException conn =
+    let someTran = Sql.transactional conn (expand someTranAndFail)
+    let someTran = catch () someTran
+    someTran conn
+    Assert.AreEqual(0L, countUsers conn)
 
 [<Test>]
 [<Parallelizable>]
 let ``transaction with exception`` () =
-    let someTran conn =
-        insertUser conn {id = 1; name = "pepe"; address = None}
-        insertUser conn {id = 2; name = "jose"; address = None}
-        failwith "Bla"
-        ()
-
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        let someTran = Sql.transactional conn (expand someTran)
-        let someTran = catch () someTran
-        someTran conn
-        Assert.AreEqual(0L, countUsers conn))
+        transactionWithException conn)
     ()
+
+let someTran conn =
+    insertUser conn {id = 1; name = "pepe"; address = None}
+    insertUser conn {id = 2; name = "jose"; address = None}
+    ()
+
+let transactionCommitted conn =
+    let someTran = Sql.transactional conn (expand someTran)
+    someTran conn
+    Assert.AreEqual(2L, countUsers conn)
 
 [<Test>]
 [<Parallelizable>]
 let ``transaction committed`` () =
-    let someTran conn =
-        insertUser conn {id = 1; name = "pepe"; address = None}
-        insertUser conn {id = 2; name = "jose"; address = None}
-        ()
-
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        let someTran = Sql.transactional conn (expand someTran)
-        someTran conn
-        Assert.AreEqual(2L, countUsers conn))
+        transactionCommitted conn)
     ()
+
+let someTranWithSubTran conn () =
+    let subtran conn () = 
+        insertUser conn {id = 3; name = "jorge"; address = None}
+        failwith "this fails"
+    (Sql.transactional conn subtran)()
+    insertUser conn {id = 1; name = "pepe"; address = None}
+    insertUser conn {id = 2; name = "jose"; address = None}
+    ()
+
+let nestedTransactionsAreNotSupported conn =
+    let someTran = Sql.transactional conn someTranWithSubTran
+    assertThrows<SQLiteException> someTran
 
 [<Test>]
 [<Parallelizable>]
 let ``nested transactions are NOT supported`` () =
-    let someTran conn () =
-        let subtran conn () = 
-            insertUser conn {id = 3; name = "jorge"; address = None}
-            failwith "this fails"
-        (Sql.transactional conn subtran)()
-        insertUser conn {id = 1; name = "pepe"; address = None}
-        insertUser conn {id = 2; name = "jose"; address = None}
-        ()
-
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        let someTran = Sql.transactional conn someTran
-        assertThrows<SQLiteException> someTran)
+        nestedTransactionsAreNotSupported conn)
     ()
+
+let transactionWithOption conn =
+    let someTranAndFail a b = someTranAndFail a
+    let someTran = Sql.transactional2 conn someTranAndFail
+    let result = someTran()
+    match result with
+    | Sql.Success v -> raise <| Exception("transaction should have failed!")
+    | Sql.Failure e -> printfn "Failed with exception %A" e
+    Assert.AreEqual(0L, countUsers conn)
 
 [<Test>]
 [<Parallelizable>]
 let ``transaction with option`` () =
-    let someTran conn () =
-        insertUser conn {id = 1; name = "pepe"; address = None}
-        insertUser conn {id = 2; name = "jose"; address = None}
-        failwith "Bla"
-        5
-
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        let someTran = Sql.transactional2 conn someTran
-        let result = someTran()
-        match result with
-        | Sql.Success v -> printfn "Success %d" v; raise <| Exception("transaction should have failed!")
-        | Sql.Failure e -> printfn "Failed with exception %A" e
-        Assert.AreEqual(0L, countUsers conn))
+        transactionWithOption conn)
     ()
 
 // Tests whether n is prime - expects n > 1
@@ -229,109 +250,112 @@ let insertUsers conn =
     let insert = Sql.transactionalWithIsolation IsolationLevel.ReadCommitted conn insert
     insert()
     
+let dataReaderIsParallelizable conn =
+    insertUsers conn
+    log "reading"
+    let primes = Sql.execReader conn "select * from person" []
+                    |> Seq.ofDataReader
+                    |> Seq.map (fun r -> (r?id).Value)
+                    |> PSeq.filter isPrime
+                    |> PSeq.length
+    logf "%d primes" primes
+
+
 [<Test>]
 [<Parallelizable>]
 let ``datareader is parallelizable`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        insertUsers conn
-        log "reading"
-        let primes = Sql.execReader conn "select * from person" []
-                     |> Seq.ofDataReader
-                     |> Seq.map (fun r -> (r?id).Value)
-                     |> PSeq.filter isPrime
-                     |> PSeq.length
-        logf "%d primes" primes)
+        dataReaderIsParallelizable conn)
+
+let dataReaderToSeqIsForwardOnly conn =
+    insertUsers conn
+    let all = Sql.execReader conn "select * from person" []
+                |> Seq.ofDataReader
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
+    let secondIter() = 
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
+    assertThrows<InvalidOperationException> secondIter
 
 [<Test>]
 let ``datareader to seq is forward-only``() =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        insertUsers conn
-        let all = Sql.execReader conn "select * from person" []
-                  |> Seq.ofDataReader
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
-        let secondIter() = 
-            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
-        assertThrows<InvalidOperationException> secondIter)
+        dataReaderToSeqIsForwardOnly conn)
     ()
     
+
+let dataReaderToSeqIsCacheable conn =
+    insertUsers conn
+    // this doesn't dispose the data reader
+    let all = Sql.execReader conn "select * from person" []
+                |> Seq.ofDataReader
+                |> Seq.cache
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
 
 [<Test>]
 [<Parallelizable>]
 let ``datareader to seq is cacheable`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        insertUsers conn
-        // this doesn't dispose the data reader
-        let all = Sql.execReader conn "select * from person" []
-                   |> Seq.ofDataReader
-                   |> Seq.cache
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
-    )
+        dataReaderToSeqIsCacheable conn)
     ()
+
+let dataReaderToSeqIsCacheable2 conn =
+    insertUsers conn
+    // this doesn't dispose the data reader either!
+    use reader = Sql.execReader conn "select * from person" []
+    let all = reader
+                |> Seq.ofDataReader
+                |> Seq.cache
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
 
 [<Test>]
 [<Parallelizable>]
 let ``datareader to seq is cacheable 2`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        insertUsers conn
-        // this doesn't dispose the data reader either!
-        use reader = Sql.execReader conn "select * from person" []
+        dataReaderToSeqIsCacheable2 conn)
+    ()
+
+let dataReaderToSeqIsCachable3 conn =
+    insertUsers conn
+    // this doesn't dispose the data reader either!
+    let reader = Sql.execReader conn "select * from person" []
+    let withReader reader =
         let all = reader
-                  |> Seq.ofDataReader
-                  |> Seq.cache
+                    |> Seq.ofDataReader
+                    |> Seq.cache
         all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
         all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
-    )
-    ()
+    using reader withReader
 
 [<Test>]
 [<Parallelizable>]
 let ``datareader to seq is cacheable 3`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        insertUsers conn
-        // this doesn't dispose the data reader either!
-        let reader = Sql.execReader conn "select * from person" []
-        let withReader reader =
-            let all = reader
-                      |> Seq.ofDataReader
-                      |> Seq.cache
-            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
-            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
-        using reader withReader
-    )
+        dataReaderToSeqIsCachable3 conn)
     ()
+
+let dataReaderWithLazyList conn =
+    insertUsers conn
+    // this doesn't dispose the data reader either!
+    let reader = Sql.execReader conn "select * from person" []
+    let withReader reader =
+        let all = reader
+                    |> Seq.ofDataReader
+                    |> LazyList.ofSeq
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
+    using reader withReader
 
 [<Test>]
 [<Parallelizable>]
 let ``datareader with lazylist`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        insertUsers conn
-        // this doesn't dispose the data reader either!
-        let reader = Sql.execReader conn "select * from person" []
-        let withReader reader =
-            let all = reader
-                      |> Seq.ofDataReader
-                      |> LazyList.ofSeq
-            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
-            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
-        using reader withReader
-    )
-    ()
-
-[<Test>]
-let ``connection management 1``() =
-    File.Delete "test.db" 
-    createSchema (createPersistentConnection())
-    let mgr = Sql.withNewConnection createPersistentConnection
-    let execReader = Sql.execReader mgr
-    let execNonQuery = Sql.execNonQuery mgr
-    insertUsers mgr
-    let all = execReader "select * from person" [] |> List.ofDataReader
-    printfn "count: %d" all.Length
+        dataReaderWithLazyList conn)
     ()
