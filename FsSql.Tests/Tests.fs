@@ -68,7 +68,7 @@ let withPersistentDatabase f =
     withResource createConnectionAndSchema (fun c -> c.Dispose()) f
 
 let userMapper r = 
-    { id = (Sql.readInt "id" r).Value ; name = (Sql.readString "name" r).Value; address = None}
+    { id = (r?id).Value ; name = (r?name).Value; address = None}
 
 let selectById conn = Sql.execReaderF conn "select * from person where id = %d"
 
@@ -131,7 +131,7 @@ let ``get many``() =
             insertUser conn {id = i; name = "pepe" + i.ToString(); address = None}
         let first10 = Sql.execReaderF conn "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
         for i in first10 do
-            printfn "%d" (Sql.readInt "id" i).Value
+            printfn "%d" (i?id).Value
         printfn "end!")
 
 [<Test>]
@@ -238,7 +238,7 @@ let ``datareader is parallelizable`` () =
         log "reading"
         let primes = Sql.execReader conn "select * from person" []
                      |> Seq.ofDataReader
-                     |> Seq.map (fun r -> (r |> Sql.readInt "id").Value)
+                     |> Seq.map (fun r -> (r?id).Value)
                      |> PSeq.filter isPrime
                      |> PSeq.length
         logf "%d primes" primes)
@@ -250,9 +250,9 @@ let ``datareader to seq is forward-only``() =
         insertUsers conn
         let all = Sql.execReader conn "select * from person" []
                   |> Seq.ofDataReader
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> Sql.readInt "id").Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
         let secondIter() = 
-            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> Sql.readString "name").Value)
+            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
         assertThrows<InvalidOperationException> secondIter)
     ()
     
@@ -267,8 +267,8 @@ let ``datareader to seq is cacheable`` () =
         let all = Sql.execReader conn "select * from person" []
                    |> Seq.ofDataReader
                    |> Seq.cache
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> Sql.readInt "id").Value)
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> Sql.readString "name").Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
     )
     ()
 
@@ -283,8 +283,8 @@ let ``datareader to seq is cacheable 2`` () =
         let all = reader
                   |> Seq.ofDataReader
                   |> Seq.cache
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> Sql.readInt "id").Value)
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> Sql.readString "name").Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
     )
     ()
 
@@ -300,8 +300,8 @@ let ``datareader to seq is cacheable 3`` () =
             let all = reader
                       |> Seq.ofDataReader
                       |> Seq.cache
-            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> Sql.readInt "id").Value)
-            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> Sql.readString "name").Value)
+            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
+            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
         using reader withReader
     )
     ()
@@ -318,8 +318,8 @@ let ``datareader with lazylist`` () =
             let all = reader
                       |> Seq.ofDataReader
                       |> LazyList.ofSeq
-            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r |> Sql.readInt "id").Value)
-            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r |> Sql.readString "name").Value)
+            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
+            all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
         using reader withReader
     )
     ()
