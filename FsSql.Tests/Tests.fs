@@ -63,7 +63,7 @@ let findUser conn =
 let insertUser conn (p: Person) =
     Sql.execNonQuery conn
         "insert into person (id, name) values (@id, @name)"
-        (Sql.parameters ["@id", upcast p.id; "@name", upcast p.name])
+        (Sql.parameters ["@id", box p.id; "@name", box p.name])
         |> ignore
     //execNonQuery "insert into person (id, name) values (%d, %s)" p.id p.name
 
