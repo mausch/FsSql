@@ -116,10 +116,11 @@ let parameters (p: (string * obj) list) =
     p |> List.map inferParameterDbType
 
 let execReader (cmgr: ConnectionManager) (sql: string) (parameters: Parameter list) =
-    let execReader' connection =
-        use cmd = prepareCommand connection sql CommandType.Text parameters
-        cmd.ExecuteReader()
-    doWithConnection cmgr execReader'
+    let create,dispose = cmgr
+    let connection = create()
+    use cmd = prepareCommand connection sql CommandType.Text parameters
+    let dispose() = dispose connection
+    new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader    
 
 let execNonQuery (cmgr: ConnectionManager) (sql: string) (parameters: Parameter list) =
     let execNonQuery' connection = 
