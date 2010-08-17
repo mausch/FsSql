@@ -5,7 +5,7 @@ open System
 let log s = printfn "%A: %s" DateTime.Now s
 let logf a = sprintf a >> log
 
-let withResource (create: unit -> 'a) (dispose: 'a -> unit) (action: 'a -> 'b) =
+let withResource create dispose action =
     let x = create()
     try
         action x
