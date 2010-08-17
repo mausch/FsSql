@@ -9,6 +9,21 @@ open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
 open FsSqlImpl
 open FsSqlPrelude
+
+type ConnectionManager = (unit -> IDbConnection) * (IDbConnection -> unit)
+
+let withThisConnection (conn: IDbConnection) : ConnectionManager =
+    let create() = conn
+    let dispose c = ()
+    create,dispose
+
+let withNewConnection (create: unit -> IDbConnection) : ConnectionManager = 
+    let dispose (c: IDisposable) = c.Dispose()
+    create,dispose
+
+let internal doWithConnection (cmgr: ConnectionManager) f =
+    let create,dispose = cmgr
+    withResource create dispose f
     
 let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
     if not (FSharpType.IsFunction typeof<'a>) then
@@ -36,7 +51,7 @@ let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfF
         let handler = proc types []
         unbox (FSharpValue.MakeFunction(typeof<'a>, handler))
 
-let internal sqlProcessor (conn: #IDbConnection) (sql: string, values: obj list) =
+let internal sqlProcessor (conn: ConnectionManager) (withCmd: IDbCommand -> 'a) (sql: string, values: obj list) =
     let stripFormatting s =
         let i = ref -1
         let eval (rxMatch: Match) =
@@ -44,24 +59,24 @@ let internal sqlProcessor (conn: #IDbConnection) (sql: string, values: obj list)
             sprintf "@p%d" !i
         Regex.Replace(s, "%.", eval)
     let sql = stripFormatting sql
-    let cmd = conn.CreateCommand()
-    cmd.CommandText <- sql
-    let createParam i (p: obj) =
-        let param = cmd.CreateParameter()
-        //param.DbType <- DbType.
-        param.ParameterName <- sprintf "@p%d" i
-        param.Value <- p
-        cmd.Parameters.Add param |> ignore
-    values |> Seq.iteri createParam
-    cmd
+    let sqlProcessor' (conn: IDbConnection) = 
+        let cmd = conn.CreateCommand()
+        cmd.CommandText <- sql
+        let createParam i (p: obj) =
+            let param = cmd.CreateParameter()
+            //param.DbType <- DbType.
+            param.ParameterName <- sprintf "@p%d" i
+            param.Value <- p
+            cmd.Parameters.Add param |> ignore
+        values |> Seq.iteri createParam
+        withCmd cmd
+    doWithConnection conn sqlProcessor'
 
 let internal sqlProcessorToDataReader a b = 
-    let cmd = sqlProcessor a b
-    cmd.ExecuteReader()
+    sqlProcessor a (fun cmd -> cmd.ExecuteReader()) b
 
 let internal sqlProcessorNonQuery a b =
-    let cmd = sqlProcessor a b
-    cmd.ExecuteNonQuery()
+    sqlProcessor a (fun cmd -> cmd.ExecuteNonQuery()) b
 
 let execReaderF connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
 let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorNonQuery connectionFactory) a
@@ -100,41 +115,49 @@ let internal inferParameterDbType (p: string * obj) =
 let parameters (p: (string * obj) list) = 
     p |> List.map inferParameterDbType
 
-let execReader (connection: #IDbConnection) (sql: string) (parameters: Parameter list) =
-    use cmd = prepareCommand connection sql CommandType.Text parameters
-    cmd.ExecuteReader()
+let execReader (cmgr: ConnectionManager) (sql: string) (parameters: Parameter list) =
+    let execReader' connection =
+        use cmd = prepareCommand connection sql CommandType.Text parameters
+        cmd.ExecuteReader()
+    doWithConnection cmgr execReader'
 
-let execNonQuery (connection: #IDbConnection) (sql: string) (parameters: Parameter list) =
-    use cmd = prepareCommand connection sql CommandType.Text parameters
-    cmd.ExecuteNonQuery()
-    
-let transactionalWithIsolation (isolation: IsolationLevel) (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a) =
-    let tx = conn.BeginTransaction(isolation)
-    log "started tx"
-    try
-        let r = f conn a
-        tx.Commit()
-        log "committed tx"
-        r
-    with e ->
-        tx.Rollback()
-        log "rolled back tx"
-        reraise()
+let execNonQuery (cmgr: ConnectionManager) (sql: string) (parameters: Parameter list) =
+    let execNonQuery' connection = 
+        use cmd = prepareCommand connection sql CommandType.Text parameters
+        cmd.ExecuteNonQuery()
+    doWithConnection cmgr execNonQuery'
+
+let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionManager) (f: ConnectionManager -> 'a -> 'b) (a: 'a) =
+    let transactionalWithIsolation' (conn: IDbConnection) = 
+        let tx = conn.BeginTransaction(isolation)
+        log "started tx"
+        try
+            let r = f (withThisConnection conn) a
+            tx.Commit()
+            log "committed tx"
+            r
+        with e ->
+            tx.Rollback()
+            log "rolled back tx"
+            reraise()
+    doWithConnection cmgr transactionalWithIsolation'
 
 let transactional a = 
     transactionalWithIsolation IsolationLevel.Unspecified a
 
 type TxResult<'a> = Success of 'a | Failure of exn
 
-let transactional2 (conn: #IDbConnection) (f: #IDbConnection -> 'a -> 'b) (a: 'a) =
-    let tx = conn.BeginTransaction()
-    try
-        let r = f conn a
-        tx.Commit()
-        Success r
-    with e ->
-        tx.Rollback()
-        Failure e
+let transactional2 (cmgr: ConnectionManager) (f: ConnectionManager -> 'a -> 'b) (a: 'a) =
+    let transactional2' (conn: IDbConnection) =
+        let tx = conn.BeginTransaction()
+        try
+            let r = f (withThisConnection conn) a
+            tx.Commit()
+            Success r
+        with e ->
+            tx.Rollback()
+            Failure e
+    doWithConnection cmgr transactional2'
 
 let isNull a = DBNull.Value.Equals a
 
@@ -179,6 +202,3 @@ let getOne mapper query id =
     |> Seq.ofDataReader
     |> Seq.map mapper
     |> Enumerable.Single
-
-let withNewConnection (createConnection: unit -> #IDbConnection) f =
-    using (createConnection()) f
