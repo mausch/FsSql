@@ -12,7 +12,7 @@ open FsSqlPrelude
 
 type ConnectionManager = (unit -> IDbConnection) * (IDbConnection -> unit)
 
-let withThisConnection (conn: IDbConnection) : ConnectionManager =
+let withConnection (conn: IDbConnection) : ConnectionManager =
     let create() = conn
     let dispose c = ()
     create,dispose
@@ -133,7 +133,7 @@ let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionMana
         let tx = conn.BeginTransaction(isolation)
         log "started tx"
         try
-            let r = f (withThisConnection conn) a
+            let r = f (withConnection conn) a
             tx.Commit()
             log "committed tx"
             r
@@ -152,7 +152,7 @@ let transactional2 (cmgr: ConnectionManager) (f: ConnectionManager -> 'a -> 'b) 
     let transactional2' (conn: IDbConnection) =
         let tx = conn.BeginTransaction()
         try
-            let r = f (withThisConnection conn) a
+            let r = f (withConnection conn) a
             tx.Commit()
             Success r
         with e ->
