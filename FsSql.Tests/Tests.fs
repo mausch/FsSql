@@ -68,6 +68,11 @@ let withPersistentDatabase f =
         conn
     withResource createConnectionAndSchema (fun c -> c.Dispose()) f
 
+let recreateDbFile() =
+    File.Delete "test.db"
+    createSchema (createPersistentConnection())
+    Sql.withNewConnection createPersistentConnection
+
 let userMapper r = 
     { id = (r?id).Value ; name = (r?name).Value; address = None}
 
@@ -110,10 +115,7 @@ let ``insert then get``() =
 
 [<Test>]
 let ``insert then get persistent`` () = 
-    File.Delete "test.db"
-    createSchema (createPersistentConnection())
-    let conn = Sql.withNewConnection createPersistentConnection
-    insertThenGet conn
+    insertThenGet (recreateDbFile())
 
 let findNonExistentRecord conn = 
     let p = findUser conn 39393
