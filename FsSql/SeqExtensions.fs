@@ -23,4 +23,5 @@ let ofDataReader (dr: #IDataReader) =
             yield! records
         finally
             log "datareader dispose"
-            dr.Dispose()}
+            if not (dr.IsClosed)
+                then dr.Dispose()}

@@ -1,12 +1,15 @@
 ﻿namespace FsSqlImpl
 
 open System.Data
+open FsSqlPrelude
 
 type DataReaderWrapper(dr: IDataReader, dispose: unit -> unit) =
     interface IDataReader with
         member x.Close() = dr.Close()
         member x.Dispose() = 
-            dr.Dispose()
+            log "DataReaderWrapper dispose"
+            if not (dr.IsClosed)
+                then dr.Dispose()
             dispose()
         member x.GetBoolean i = dr.GetBoolean i
         member x.GetByte i = dr.GetByte i

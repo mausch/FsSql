@@ -21,6 +21,10 @@ let withNewConnection (create: unit -> IDbConnection) : ConnectionManager =
     let dispose (c: IDisposable) = c.Dispose()
     create,dispose
 
+let internal withCreateConnection (create: unit -> IDbConnection) : ConnectionManager = 
+    let dispose x = ()
+    create,dispose
+
 let internal doWithConnection (cmgr: ConnectionManager) f =
     let create,dispose = cmgr
     withResource create dispose f
@@ -51,7 +55,7 @@ let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfF
         let handler = proc types []
         unbox (FSharpValue.MakeFunction(typeof<'a>, handler))
 
-let internal sqlProcessor (conn: ConnectionManager) (withCmd: IDbCommand -> 'a) (sql: string, values: obj list) =
+let internal sqlProcessor (cmgr: ConnectionManager) (withCmd: IDbCommand -> IDbConnection -> 'a) (sql: string, values: obj list) =
     let stripFormatting s =
         let i = ref -1
         let eval (rxMatch: Match) =
@@ -69,14 +73,20 @@ let internal sqlProcessor (conn: ConnectionManager) (withCmd: IDbCommand -> 'a) 
             param.Value <- p
             cmd.Parameters.Add param |> ignore
         values |> Seq.iteri createParam
-        withCmd cmd
-    doWithConnection conn sqlProcessor'
+        withCmd cmd conn
+    doWithConnection cmgr sqlProcessor'
 
-let internal sqlProcessorToDataReader a b = 
-    sqlProcessor a (fun cmd -> cmd.ExecuteReader()) b
+let internal sqlProcessorToDataReader (cmgr: ConnectionManager) b = 
+    let create,dispose = cmgr
+    let exec (cmd: IDbCommand) (conn: IDbConnection) = 
+        let dispose() = dispose conn
+        new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
+    sqlProcessor (withCreateConnection create) exec b
 
 let internal sqlProcessorNonQuery a b =
-    sqlProcessor a (fun cmd -> cmd.ExecuteNonQuery()) b
+    let exec (cmd: IDbCommand) x = 
+        cmd.ExecuteNonQuery()
+    sqlProcessor a exec b
 
 let execReaderF connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
 let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorNonQuery connectionFactory) a

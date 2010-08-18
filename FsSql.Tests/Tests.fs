@@ -108,6 +108,13 @@ let ``insert then get``() =
         insertThenGet conn)
     ()
 
+[<Test>]
+let ``insert then get persistent`` () = 
+    File.Delete "test.db"
+    createSchema (createPersistentConnection())
+    let conn = Sql.withNewConnection createPersistentConnection
+    insertThenGet conn
+
 let findNonExistentRecord conn = 
     let p = findUser conn 39393
     Assert.IsTrue p.IsNone
