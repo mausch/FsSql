@@ -1,4 +1,4 @@
 ﻿module AssemblyInfo
 
-[<assembly: MbUnit.Framework.Parallelizable>]
+//[<assembly: MbUnit.Framework.Parallelizable>]
 do()

@@ -113,9 +113,11 @@ let ``insert then get``() =
         insertThenGet conn)
     ()
 
+(*
 [<Test>]
 let ``insert then get persistent`` () = 
     insertThenGet (withNewDbFile())
+*)
 
 let findNonExistentRecord conn = 
     let p = findUser conn 39393
@@ -128,9 +130,11 @@ let ``find non-existent record``() =
     withDatabase (fun conn ->
         findNonExistentRecord (Sql.withConnection conn))
 
+(*
 [<Test>]
 let ``find non-existent record persistent``() =
     findNonExistentRecord (withNewDbFile())
+*)
 
 let findExistentRecord conn = 
     insertUser conn {id = 1; name = "pepe"; address = None}
@@ -145,6 +149,11 @@ let ``find existent record``() =
         let conn = Sql.withConnection conn
         findExistentRecord conn)
 
+(*
+[<Test>]
+let ``find existent record persistent``() =
+    findExistentRecord (withNewDbFile())
+*)
 
 let getMany conn = 
     for i in 1..100 do
@@ -160,6 +169,10 @@ let ``get many``() =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         getMany conn)
+
+[<Test>]
+let ``get many persistent``() =
+    getMany (withNewDbFile())
 
 let someTranAndFail conn =
     insertUser conn {id = 1; name = "pepe"; address = None}
@@ -181,6 +194,10 @@ let ``transaction with exception`` () =
         transactionWithException conn)
     ()
 
+[<Test>]
+let ``transaction with exception persistent``() =
+    transactionWithException (withNewDbFile())
+
 let someTran conn =
     insertUser conn {id = 1; name = "pepe"; address = None}
     insertUser conn {id = 2; name = "jose"; address = None}
@@ -198,6 +215,12 @@ let ``transaction committed`` () =
         let conn = Sql.withConnection conn
         transactionCommitted conn)
     ()
+
+(*
+[<Test>]
+let ``transaction committed persistent``() =
+    transactionCommitted (withNewDbFile())
+*)
 
 let someTranWithSubTran conn () =
     let subtran conn () = 
@@ -220,6 +243,12 @@ let ``nested transactions are NOT supported`` () =
         nestedTransactionsAreNotSupported conn)
     ()
 
+(*
+[<Test>]
+let ``nested transactions are NOT supported persistent`` () =
+    nestedTransactionsAreNotSupported (withNewDbFile())
+*)
+
 let transactionWithOption conn =
     let someTranAndFail a b = someTranAndFail a
     let someTran = Sql.transactional2 conn someTranAndFail
@@ -235,7 +264,10 @@ let ``transaction with option`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         transactionWithOption conn)
-    ()
+
+[<Test>]
+let ``transaction with option persistent``() =
+    transactionWithOption (withNewDbFile())
 
 // Tests whether n is prime - expects n > 1
 // From http://tomasp.net/blog/fsparallelops.aspx
@@ -281,6 +313,10 @@ let ``datareader is parallelizable`` () =
         let conn = Sql.withConnection conn
         dataReaderIsParallelizable conn)
 
+[<Test>]
+let ``datareader is parallelizable persistent``() =
+    dataReaderIsParallelizable(withNewDbFile())
+
 let dataReaderToSeqIsForwardOnly conn =
     insertUsers conn
     let all = Sql.execReader conn "select * from person" []
@@ -291,12 +327,17 @@ let dataReaderToSeqIsForwardOnly conn =
     assertThrows<InvalidOperationException> secondIter
 
 [<Test>]
+[<Parallelizable>]
 let ``datareader to seq is forward-only``() =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         dataReaderToSeqIsForwardOnly conn)
-    ()
-    
+
+(*    
+[<Test>]
+let ``datareader to seq is forward-only persistent``() =
+    dataReaderToSeqIsForwardOnly (withNewDbFile())
+*)
 
 let dataReaderToSeqIsCacheable conn =
     insertUsers conn
@@ -313,7 +354,12 @@ let ``datareader to seq is cacheable`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         dataReaderToSeqIsCacheable conn)
-    ()
+
+(*
+[<Test>]
+let ``datareader to seq is cacheable persistent``() =
+    dataReaderToSeqIsCacheable (withNewDbFile())
+*)
 
 let dataReaderToSeqIsCacheable2 conn =
     insertUsers conn
@@ -331,9 +377,14 @@ let ``datareader to seq is cacheable 2`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         dataReaderToSeqIsCacheable2 conn)
-    ()
 
-let dataReaderToSeqIsCachable3 conn =
+(*
+[<Test>]
+let ``datareader to seq is cacheable 2 persistent`` () =
+    dataReaderToSeqIsCacheable2 (withNewDbFile())
+*)
+
+let dataReaderToSeqIsCacheable3 conn =
     insertUsers conn
     // this doesn't dispose the data reader either!
     let reader = Sql.execReader conn "select * from person" []
@@ -350,8 +401,13 @@ let dataReaderToSeqIsCachable3 conn =
 let ``datareader to seq is cacheable 3`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
-        dataReaderToSeqIsCachable3 conn)
-    ()
+        dataReaderToSeqIsCacheable3 conn)
+
+(*
+[<Test>]
+let ``datareader to seq is cacheable 3 persistent`` () =
+    dataReaderToSeqIsCacheable3 (withNewDbFile())
+*)
 
 let dataReaderWithLazyList conn =
     insertUsers conn
@@ -371,4 +427,9 @@ let ``datareader with lazylist`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         dataReaderWithLazyList conn)
-    ()
+
+(*
+[<Test>]
+let ``datareader with lazylist persistent`` () =
+    dataReaderWithLazyList (withNewDbFile())
+    *)
