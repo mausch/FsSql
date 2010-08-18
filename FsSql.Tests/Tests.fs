@@ -346,11 +346,11 @@ let ``datareader to seq is forward-only``() =
         let conn = Sql.withConnection conn
         dataReaderToSeqIsForwardOnly conn)
 
-(*    
 [<Test>]
+//[<Ignore("doesn't close connection")>]
 let ``datareader to seq is forward-only persistent``() =
     dataReaderToSeqIsForwardOnly (withNewDbFile())
-*)
+
 
 let dataReaderToSeqIsCacheable conn =
     insertUsers conn
