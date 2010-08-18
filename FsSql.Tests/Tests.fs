@@ -165,7 +165,7 @@ let ``find existent record persistent``() =
 *)
 
 let getMany conn = 
-    for i in 1..100 do
+    for i in 1..50 do
         insertUser conn {id = i; name = "pepe" + i.ToString(); address = None}
     let first10 = Sql.execReaderF conn "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
     for i in first10 do
@@ -178,6 +178,7 @@ let ``get many``() =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         getMany conn)
+
 
 [<Test>]
 let ``get many persistent``() =
@@ -299,7 +300,8 @@ let ``pseq isprime`` () =
 let insertUsers conn =
     log "inserting"
     let insert conn () =
-        for i in 100000000..100050000 do
+        //for i in 100000000..100050000 do
+        for i in 1..10 do
             insertUser conn {id = i; name = "pepe" + i.ToString(); address = None}
     let insert = Sql.transactionalWithIsolation IsolationLevel.ReadCommitted conn insert
     insert()
@@ -322,9 +324,11 @@ let ``datareader is parallelizable`` () =
         let conn = Sql.withConnection conn
         dataReaderIsParallelizable conn)
 
+(*
 [<Test>]
 let ``datareader is parallelizable persistent``() =
     dataReaderIsParallelizable(withNewDbFile())
+*)
 
 let dataReaderToSeqIsForwardOnly conn =
     insertUsers conn
@@ -436,9 +440,8 @@ let ``datareader with lazylist`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         dataReaderWithLazyList conn)
-
 (*
 [<Test>]
 let ``datareader with lazylist persistent`` () =
     dataReaderWithLazyList (withNewDbFile())
-    *)
+*)
