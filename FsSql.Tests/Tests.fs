@@ -18,6 +18,15 @@ let catch defaultValue f a =
         f a
     with e -> defaultValue
 
+[<Test>]
+let catchtest() =
+    let f a b = a/b
+    let g = catch 7 (f 10)
+    let x = g 0
+    Assert.AreEqual(7, x)
+    assertThrows<DivideByZeroException>(fun () -> f 10 0 |> ignore)
+    ()
+
 let expand f = fun _ -> f
 let delay f = fun() -> f
 
