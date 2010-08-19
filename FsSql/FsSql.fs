@@ -13,19 +13,21 @@ open FsSqlPrelude
 type ConnectionManager = (unit -> IDbConnection) * (IDbConnection -> unit)
 
 let withConnection (conn: IDbConnection) : ConnectionManager =
+    let id = Guid.NewGuid().ToString()
     let create() = 
-        log "creating connection from const"
+        logf "creating connection from const %s" id
         conn
-    let dispose c = log "disposing connection (but not really)"
+    let dispose c = logf "disposing connection (but not really) %s" id
     create,dispose
 
 let withNewConnection (create: unit -> IDbConnection) : ConnectionManager = 
+    let id = Guid.NewGuid().ToString()
     let create() =
-        log "creating connection"
+        logf "creating connection %s" id
         create()
     let dispose (c: IDisposable) = 
         c.Dispose()
-        log "disposing connection"
+        logf "disposing connection %s" id
     create,dispose
 
 let internal withCreateConnection (create: unit -> IDbConnection) : ConnectionManager = 

@@ -36,7 +36,7 @@ let createConnection() =
     conn :> IDbConnection
 
 let createPersistentConnection() =
-    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True;Pooling=false")
+    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True;Pooling=false;Max Pool Size=1;")
     conn.Open()
     conn :> IDbConnection
 
@@ -54,7 +54,9 @@ type Person = {
 
 let createSchema conn =
     let exec a = Sql.execNonQuery (Sql.withConnection conn) a [] |> ignore
+    exec "drop table if exists person"
     exec "create table person (id int primary key not null, name varchar not null, address int null)"
+    exec "drop table if exists address"
     exec "create table address (id int primary key not null, street varchar null, city varchar null)"
     log "done creating schema"
 
@@ -77,8 +79,9 @@ let withPersistentDatabase f =
         conn
     withResource createConnectionAndSchema (fun c -> c.Dispose()) f
 
-let withNewDbFile() =
-    File.Delete "test.db"
+File.Delete "test.db"
+
+let withNewDbFile() =    
     createSchema (createPersistentConnection())
     Sql.withNewConnection createPersistentConnection
 
@@ -115,7 +118,7 @@ let insertThenGet conn =
     printfn "id=%d, name=%s" p.id p.name
 
 [<Test>]
-[<Parallelizable>]
+
 let ``insert then get``() = 
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
@@ -132,7 +135,7 @@ let findNonExistentRecord conn =
     printfn "end test"
 
 [<Test>]
-[<Parallelizable>]
+
 let ``find non-existent record``() =
     withDatabase (fun conn ->
         findNonExistentRecord (Sql.withConnection conn))
@@ -148,7 +151,7 @@ let findExistentRecord conn =
     printfn "end test"
 
 [<Test>]
-[<Parallelizable>]
+
 let ``find existent record``() =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
@@ -167,7 +170,7 @@ let getMany conn =
     printfn "end!"
 
 [<Test>]
-[<Parallelizable>]
+
 let ``get many``() =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
@@ -191,14 +194,14 @@ let transactionWithException conn =
     Assert.AreEqual(0L, countUsers conn)
 
 [<Test>]
-[<Parallelizable>]
+
 let ``transaction with exception`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         transactionWithException conn)
     ()
 
-[<Test>]
+[<Test;Ignore>]
 let ``transaction with exception persistent``() =
     transactionWithException (withNewDbFile())
 
@@ -213,14 +216,14 @@ let transactionCommitted conn =
     Assert.AreEqual(2L, countUsers conn)
 
 [<Test>]
-[<Parallelizable>]
+
 let ``transaction committed`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         transactionCommitted conn)
     ()
 
-[<Test>]
+[<Test;Ignore>]
 let ``transaction committed persistent``() =
     transactionCommitted (withNewDbFile())
 
@@ -238,14 +241,14 @@ let nestedTransactionsAreNotSupported conn =
     assertThrows<SQLiteException> someTran
 
 [<Test>]
-[<Parallelizable>]
+
 let ``nested transactions are NOT supported`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         nestedTransactionsAreNotSupported conn)
     ()
 
-[<Test>]
+[<Test;Ignore>]
 let ``nested transactions are NOT supported persistent`` () =
     nestedTransactionsAreNotSupported (withNewDbFile())
 
@@ -259,13 +262,13 @@ let transactionWithOption conn =
     Assert.AreEqual(0L, countUsers conn)
 
 [<Test>]
-[<Parallelizable>]
+
 let ``transaction with option`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         transactionWithOption conn)
 
-[<Test>]
+[<Test;Ignore>]
 let ``transaction with option persistent``() =
     transactionWithOption (withNewDbFile())
 
@@ -278,7 +281,7 @@ let isPrime n =
     not ({ 2..max } |> Seq.filter (fun d -> n%d = 0) |> Enumerable.Any)
 
 [<Test>]
-[<Parallelizable>]
+
 let ``pseq isprime`` () =
     let p = {100000..800000}
             |> PSeq.filter isPrime
@@ -308,7 +311,7 @@ let dataReaderIsParallelizable conn =
 
 
 [<Test>]
-[<Parallelizable>]
+
 let ``datareader is parallelizable`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
@@ -328,7 +331,7 @@ let dataReaderToSeqIsForwardOnly conn =
     assertThrows<InvalidOperationException> secondIter
 
 [<Test>]
-[<Parallelizable>]
+
 let ``datareader to seq is forward-only``() =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
@@ -349,7 +352,7 @@ let dataReaderToSeqIsCacheable conn =
     all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
 
 [<Test>]
-[<Parallelizable>]
+
 let ``datareader to seq is cacheable`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
@@ -370,7 +373,7 @@ let dataReaderToSeqIsCacheable2 conn =
     all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
 
 [<Test>]
-[<Parallelizable>]
+
 let ``datareader to seq is cacheable 2`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
@@ -395,7 +398,7 @@ let dataReaderToSeqIsCacheable3 conn =
     using reader withReader
 
 [<Test>]
-[<Parallelizable>]
+
 let ``datareader to seq is cacheable 3`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
@@ -418,7 +421,7 @@ let dataReaderWithLazyList conn =
     using reader withReader
 
 [<Test>]
-[<Parallelizable>]
+
 let ``datareader with lazylist`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
