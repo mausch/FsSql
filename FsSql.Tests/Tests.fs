@@ -249,7 +249,7 @@ let ``nested transactions are NOT supported`` () =
         nestedTransactionsAreNotSupported conn)
     ()
 
-[<Test;Ignore("this doesn't dispose the last tx, locks the DB")>]
+[<Test>]
 let ``nested transactions are NOT supported persistent`` () =
     nestedTransactionsAreNotSupported (withNewDbFile())
 
