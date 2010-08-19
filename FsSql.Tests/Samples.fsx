@@ -32,6 +32,11 @@ let insertNUsers2 n = insertNUsers n |> Sql.transactional connMgr
 
 insertNUsers2 50 ()
 
+let countUsers(): int64 =
+    Sql.execScalar connMgr "select count(*) from user" []
+
+printfn "%d users" (countUsers())
+
 let printUser (dr: IDataRecord) =
     let id = (dr?id).Value
     let name = (dr?name).Value
