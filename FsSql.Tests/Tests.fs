@@ -56,7 +56,7 @@ let createSchema conn =
     let exec a = Sql.execNonQuery (Sql.withConnection conn) a [] |> ignore
     exec "create table person (id int primary key not null, name varchar not null, address int null)"
     exec "create table address (id int primary key not null, street varchar null, city varchar null)"
-    ()
+    log "done creating schema"
 
 let createConnectionAndSchema() =
     let conn = createConnection()
@@ -347,7 +347,6 @@ let ``datareader to seq is forward-only``() =
         dataReaderToSeqIsForwardOnly conn)
 
 [<Test>]
-//[<Ignore("doesn't close connection")>]
 let ``datareader to seq is forward-only persistent``() =
     dataReaderToSeqIsForwardOnly (withNewDbFile())
 
