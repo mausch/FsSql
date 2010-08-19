@@ -147,13 +147,13 @@ let execNonQuery (cmgr: ConnectionManager) (sql: string) (parameters: Parameter 
         cmd.ExecuteNonQuery()
     doWithConnection cmgr execNonQuery'
 
-let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionManager) (f: ConnectionManager -> 'a -> 'b) (a: 'a) =
+let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionManager) f =
     let transactionalWithIsolation' (conn: IDbConnection) = 
         let id = Guid.NewGuid().ToString()
         use tx = conn.BeginTransaction(isolation)
         logf "started tx %s" id
         try
-            let r = f (withConnection conn) a
+            let r = f (withConnection conn)
             tx.Commit()
             logf "committed tx %s" id
             r
@@ -161,24 +161,24 @@ let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionMana
             tx.Rollback()
             logf "rolled back tx %s" id
             reraise()
-    doWithConnection cmgr transactionalWithIsolation'
+    fun () -> doWithConnection cmgr transactionalWithIsolation'
 
 let transactional a = 
     transactionalWithIsolation IsolationLevel.Unspecified a
 
 type TxResult<'a> = Success of 'a | Failure of exn
 
-let transactional2 (cmgr: ConnectionManager) (f: ConnectionManager -> 'a -> 'b) (a: 'a) =
+let transactional2 (cmgr: ConnectionManager) f =
     let transactional2' (conn: IDbConnection) =
         let tx = conn.BeginTransaction()
         try
-            let r = f (withConnection conn) a
+            let r = f (withConnection conn) 
             tx.Commit()
             Success r
         with e ->
             tx.Rollback()
             Failure e
-    doWithConnection cmgr transactional2'
+    fun () -> doWithConnection cmgr transactional2'
 
 let isNull a = DBNull.Value.Equals a
 

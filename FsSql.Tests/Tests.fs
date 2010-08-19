@@ -184,9 +184,9 @@ let someTranAndFail conn =
     ()
 
 let transactionWithException conn =
-    let someTran = Sql.transactional conn (expand someTranAndFail)
+    let someTran = Sql.transactional conn someTranAndFail
     let someTran = catch () someTran
-    someTran conn
+    someTran()
     Assert.AreEqual(0L, countUsers conn)
 
 [<Test;Parallelizable>]
@@ -206,7 +206,7 @@ let someTran conn =
     ()
 
 let transactionCommitted conn =
-    let someTran conn () = someTran conn
+    let someTran conn = someTran conn
     let someTran = Sql.transactional conn someTran
     someTran()
     Assert.AreEqual(2L, countUsers conn)
@@ -222,8 +222,8 @@ let ``transaction committed`` () =
 let ``transaction committed persistent``() =
     transactionCommitted (withNewDbFile())
 
-let someTranWithSubTran conn () =
-    let subtran conn () = 
+let someTranWithSubTran conn =
+    let subtran conn = 
         insertUser conn {id = 3; name = "jorge"; address = None}
         failwith "this fails"
     (Sql.transactional conn subtran)()
@@ -247,7 +247,6 @@ let ``nested transactions are NOT supported persistent`` () =
     nestedTransactionsAreNotSupported (withNewDbFile())
 
 let transactionWithOption conn =
-    let someTranAndFail a b = someTranAndFail a
     let someTran = Sql.transactional2 conn someTranAndFail
     let result = someTran()
     match result with
@@ -284,7 +283,7 @@ let ``pseq isprime`` () =
 
 let insertUsers conn =
     log "inserting"
-    let insert conn () =
+    let insert conn =
         //for i in 100000000..100050000 do
         for i in 1..10 do
             insertUser conn {id = i; name = "pepe" + i.ToString(); address = None}
