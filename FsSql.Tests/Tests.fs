@@ -27,9 +27,6 @@ let catchtest() =
     assertThrows<DivideByZeroException>(fun () -> f 10 0 |> ignore)
     ()
 
-let expand f = fun _ -> f
-let delay f = fun() -> f
-
 let createConnection() =
     let conn = new System.Data.SQLite.SQLiteConnection("Data Source=:memory:;Version=3;New=True")
     conn.Open()
