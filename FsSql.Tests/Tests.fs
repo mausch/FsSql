@@ -201,7 +201,7 @@ let ``transaction with exception`` () =
         transactionWithException conn)
     ()
 
-[<Test;Ignore>]
+[<Test>]
 let ``transaction with exception persistent``() =
     transactionWithException (withNewDbFile())
 
@@ -248,7 +248,7 @@ let ``nested transactions are NOT supported`` () =
         nestedTransactionsAreNotSupported conn)
     ()
 
-[<Test;Ignore>]
+[<Test>]
 let ``nested transactions are NOT supported persistent`` () =
     nestedTransactionsAreNotSupported (withNewDbFile())
 
@@ -268,7 +268,7 @@ let ``transaction with option`` () =
         let conn = Sql.withConnection conn
         transactionWithOption conn)
 
-[<Test;Ignore>]
+[<Test>]
 let ``transaction with option persistent``() =
     transactionWithOption (withNewDbFile())
 
