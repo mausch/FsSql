@@ -36,7 +36,7 @@ let createConnection() =
     conn :> IDbConnection
 
 let createPersistentConnection() =
-    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True")
+    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True;Pooling=false")
     conn.Open()
     conn :> IDbConnection
 
@@ -122,11 +122,9 @@ let ``insert then get``() =
         insertThenGet conn)
     ()
 
-(*
 [<Test>]
 let ``insert then get persistent`` () = 
     insertThenGet (withNewDbFile())
-*)
 
 let findNonExistentRecord conn = 
     let p = findUser conn 39393
@@ -139,11 +137,9 @@ let ``find non-existent record``() =
     withDatabase (fun conn ->
         findNonExistentRecord (Sql.withConnection conn))
 
-(*
 [<Test>]
 let ``find non-existent record persistent``() =
     findNonExistentRecord (withNewDbFile())
-*)
 
 let findExistentRecord conn = 
     insertUser conn {id = 1; name = "pepe"; address = None}
@@ -158,11 +154,9 @@ let ``find existent record``() =
         let conn = Sql.withConnection conn
         findExistentRecord conn)
 
-(*
 [<Test>]
 let ``find existent record persistent``() =
     findExistentRecord (withNewDbFile())
-*)
 
 let getMany conn = 
     for i in 1..50 do
@@ -226,11 +220,9 @@ let ``transaction committed`` () =
         transactionCommitted conn)
     ()
 
-(*
 [<Test>]
 let ``transaction committed persistent``() =
     transactionCommitted (withNewDbFile())
-*)
 
 let someTranWithSubTran conn () =
     let subtran conn () = 
@@ -253,11 +245,9 @@ let ``nested transactions are NOT supported`` () =
         nestedTransactionsAreNotSupported conn)
     ()
 
-(*
 [<Test>]
 let ``nested transactions are NOT supported persistent`` () =
     nestedTransactionsAreNotSupported (withNewDbFile())
-*)
 
 let transactionWithOption conn =
     let someTranAndFail a b = someTranAndFail a
@@ -324,11 +314,9 @@ let ``datareader is parallelizable`` () =
         let conn = Sql.withConnection conn
         dataReaderIsParallelizable conn)
 
-(*
 [<Test>]
 let ``datareader is parallelizable persistent``() =
     dataReaderIsParallelizable(withNewDbFile())
-*)
 
 let dataReaderToSeqIsForwardOnly conn =
     insertUsers conn
@@ -367,11 +355,9 @@ let ``datareader to seq is cacheable`` () =
         let conn = Sql.withConnection conn
         dataReaderToSeqIsCacheable conn)
 
-(*
 [<Test>]
 let ``datareader to seq is cacheable persistent``() =
     dataReaderToSeqIsCacheable (withNewDbFile())
-*)
 
 let dataReaderToSeqIsCacheable2 conn =
     insertUsers conn
@@ -390,11 +376,11 @@ let ``datareader to seq is cacheable 2`` () =
         let conn = Sql.withConnection conn
         dataReaderToSeqIsCacheable2 conn)
 
-(*
+
 [<Test>]
 let ``datareader to seq is cacheable 2 persistent`` () =
     dataReaderToSeqIsCacheable2 (withNewDbFile())
-*)
+
 
 let dataReaderToSeqIsCacheable3 conn =
     insertUsers conn
@@ -415,11 +401,9 @@ let ``datareader to seq is cacheable 3`` () =
         let conn = Sql.withConnection conn
         dataReaderToSeqIsCacheable3 conn)
 
-(*
 [<Test>]
 let ``datareader to seq is cacheable 3 persistent`` () =
     dataReaderToSeqIsCacheable3 (withNewDbFile())
-*)
 
 let dataReaderWithLazyList conn =
     insertUsers conn
@@ -439,8 +423,7 @@ let ``datareader with lazylist`` () =
     withDatabase (fun conn ->
         let conn = Sql.withConnection conn
         dataReaderWithLazyList conn)
-(*
+
 [<Test>]
 let ``datareader with lazylist persistent`` () =
     dataReaderWithLazyList (withNewDbFile())
-*)
