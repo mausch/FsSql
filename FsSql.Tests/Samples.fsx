@@ -9,6 +9,11 @@ let openConn() =
     conn :> IDbConnection
 
 let connMgr = Sql.withNewConnection openConn
+let inTransaction a = Sql.transactional connMgr a
+let execScalar sql = Sql.execScalar connMgr sql
+let execReader sql = Sql.execReader connMgr sql
+let execReaderf sql = Sql.execReaderF connMgr sql
+let execNonQueryf sql = Sql.execNonQueryF connMgr sql
 let exec a = Sql.execNonQuery connMgr a [] |> ignore
 exec "drop table if exists user"
 exec "create table user (id int primary key not null, name varchar not null, address varchar null)"
@@ -28,12 +33,12 @@ let insertNUsers n conn =
                 else Some (sprintf "fake st %d" i)
         insertUser i name address |> ignore
 
-let insertNUsers2 n = insertNUsers n |> Sql.transactional connMgr
+let insertNUsers2 n = insertNUsers n |> inTransaction
 
 insertNUsers2 50 ()
 
 let countUsers(): int64 =
-    Sql.execScalar connMgr "select count(*) from user" []
+    execScalar "select count(*) from user" []
 
 printfn "%d users" (countUsers())
 
@@ -46,6 +51,10 @@ let printUser (dr: IDataRecord) =
         | Some x -> x
     printfn "Id: %d; Name: %s; Address: %s" id name address
 
-Sql.execReader connMgr "select * from user" []
+execReader "select * from user" []
 |> Seq.ofDataReader
 |> Seq.iter printUser
+
+execNonQueryf "delete from user where id > %d" 10 |> ignore
+
+printfn "Now there are %d users" (countUsers())
