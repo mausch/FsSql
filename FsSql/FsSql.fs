@@ -71,7 +71,7 @@ let internal sqlProcessor (cmgr: ConnectionManager) (withCmd: IDbCommand -> IDbC
         Regex.Replace(s, "%.", eval)
     let sql = stripFormatting sql
     let sqlProcessor' (conn: IDbConnection) = 
-        let cmd = conn.CreateCommand()
+        use cmd = conn.CreateCommand()
         cmd.CommandText <- sql
         let createParam i (p: obj) =
             let param = cmd.CreateParameter()
