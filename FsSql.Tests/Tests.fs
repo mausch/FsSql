@@ -352,7 +352,6 @@ let ``datareader to seq is cacheable persistent``() =
 
 let dataReaderToSeqIsCacheable2 conn =
     insertUsers conn
-    // this doesn't dispose the data reader either!
     use reader = Sql.execReader conn "select * from person" []
     let all = reader
                 |> Seq.ofDataReader
@@ -374,7 +373,6 @@ let ``datareader to seq is cacheable 2 persistent`` () =
 
 let dataReaderToSeqIsCacheable3 conn =
     insertUsers conn
-    // this doesn't dispose the data reader either!
     let reader = Sql.execReader conn "select * from person" []
     let withReader reader =
         let all = reader
