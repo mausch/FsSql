@@ -36,7 +36,7 @@ let createConnection() =
     conn :> IDbConnection
 
 let createPersistentConnection() =
-    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True;Pooling=false;Max Pool Size=1;")
+    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True;Pooling=false;Max Pool Size=0;")
     conn.Open()
     conn :> IDbConnection
 
@@ -211,8 +211,9 @@ let someTran conn =
     ()
 
 let transactionCommitted conn =
-    let someTran = Sql.transactional conn (expand someTran)
-    someTran conn
+    let someTran conn () = someTran conn
+    let someTran = Sql.transactional conn someTran
+    someTran()
     Assert.AreEqual(2L, countUsers conn)
 
 [<Test>]
@@ -223,7 +224,7 @@ let ``transaction committed`` () =
         transactionCommitted conn)
     ()
 
-[<Test;Ignore>]
+[<Test>]
 let ``transaction committed persistent``() =
     transactionCommitted (withNewDbFile())
 
@@ -248,7 +249,7 @@ let ``nested transactions are NOT supported`` () =
         nestedTransactionsAreNotSupported conn)
     ()
 
-[<Test>]
+[<Test;Ignore("this doesn't dispose the last tx, locks the DB")>]
 let ``nested transactions are NOT supported persistent`` () =
     nestedTransactionsAreNotSupported (withNewDbFile())
 
