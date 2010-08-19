@@ -149,16 +149,17 @@ let execNonQuery (cmgr: ConnectionManager) (sql: string) (parameters: Parameter 
 
 let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionManager) (f: ConnectionManager -> 'a -> 'b) (a: 'a) =
     let transactionalWithIsolation' (conn: IDbConnection) = 
-        let tx = conn.BeginTransaction(isolation)
-        log "started tx"
+        let id = Guid.NewGuid().ToString()
+        use tx = conn.BeginTransaction(isolation)
+        logf "started tx %s" id
         try
             let r = f (withConnection conn) a
             tx.Commit()
-            log "committed tx"
+            logf "committed tx %s" id
             r
         with e ->
             tx.Rollback()
-            log "rolled back tx"
+            logf "rolled back tx %s" id
             reraise()
     doWithConnection cmgr transactionalWithIsolation'
 
