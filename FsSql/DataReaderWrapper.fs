@@ -3,7 +3,7 @@
 open System.Data
 open FsSqlPrelude
 
-type DataReaderWrapper(dr: IDataReader, dispose: unit -> unit) =
+type internal DataReaderWrapper(dr: IDataReader, dispose: unit -> unit) =
     interface IDataReader with
         member x.Close() = dr.Close()
         member x.Dispose() = 

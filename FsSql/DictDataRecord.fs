@@ -12,7 +12,7 @@ type internal Entry = {
     fieldType: Type
 }
 
-type DictDataRecord(dr: IDataRecord) =
+type internal DictDataRecord(dr: IDataRecord) =
     let dic = 
         let x = OrderedDictionary()
         for i in [0..dr.FieldCount-1] do
