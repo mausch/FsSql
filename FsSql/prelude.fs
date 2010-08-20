@@ -2,7 +2,7 @@
 
 open System
 
-let log s = printfn "%A: %s" DateTime.Now s
+let log s = () // printfn "%A: %s" DateTime.Now s
 let logf a = sprintf a >> log
 
 let withResource create dispose action =
