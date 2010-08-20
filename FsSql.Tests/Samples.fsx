@@ -3,26 +3,34 @@
 
 open System.Data
 
+// a function that opens a connection
 let openConn() =
     let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True;")
     conn.Open()
     conn :> IDbConnection
 
+// the connection manager, encapsulates how to create and dispose the connection
 let connMgr = Sql.withNewConnection openConn
+
+// partial application of various common functions, around the connection manager
 let inTransaction a = Sql.transactional connMgr a
 let execScalar sql = Sql.execScalar connMgr sql
 let execReader sql = Sql.execReader connMgr sql
 let execReaderf sql = Sql.execReaderF connMgr sql
 let execNonQueryf sql = Sql.execNonQueryF connMgr sql
 let exec a = Sql.execNonQuery connMgr a [] |> ignore
+
+// create the schema
 exec "drop table if exists user"
 exec "create table user (id int primary key not null, name varchar not null, address varchar null)"
 
+// a function that inserts a record
 let insertUser connMgr id name address = 
     Sql.execNonQuery connMgr 
         "insert into user (id,name,address) values (@id,@name,@address)"
         (Sql.parameters ["@id", box id; "@name", box name; "@address", Sql.writeOption address])
 
+// a function that inserts N records with some predefined values
 let insertNUsers n conn =
     let insertUser = insertUser conn
     for i in 1..n do
@@ -33,8 +41,10 @@ let insertNUsers n conn =
                 else Some (sprintf "fake st %d" i)
         insertUser i name address |> ignore
 
+// wraps the n records insertion in a transaction
 let insertNUsers2 n = insertNUsers n |> inTransaction
 
+// executes the transaction, inserting 50 records
 insertNUsers2 50 ()
 
 let countUsers(): int64 =

@@ -5,6 +5,7 @@ open System.Data
 open FsSqlPrelude
 open FsSqlImpl
 
+/// Generates a new sequence from the given datareader.
 let ofDataReader (dr: #IDataReader) =
     log "started ofDataReader"
     let lockObj = obj()

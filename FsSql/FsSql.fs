@@ -10,8 +10,10 @@ open Microsoft.FSharp.Reflection
 open FsSqlImpl
 open FsSqlPrelude
 
+/// Encapsulates how to create and dispose a database connection
 type ConnectionManager = (unit -> IDbConnection) * (IDbConnection -> unit)
 
+/// Creates a <see cref="ConnectionManager"/> with an externally-owned connection
 let withConnection (conn: IDbConnection) : ConnectionManager =
     let id = Guid.NewGuid().ToString()
     let create() = 
@@ -20,6 +22,7 @@ let withConnection (conn: IDbConnection) : ConnectionManager =
     let dispose c = logf "disposing connection (but not really) %s" id
     create,dispose
 
+/// Creates a <see cref="ConnectionManager"/> with an owned connection
 let withNewConnection (create: unit -> IDbConnection) : ConnectionManager = 
     let id = Guid.NewGuid().ToString()
     let create() =
@@ -97,9 +100,13 @@ let internal sqlProcessorNonQuery a b =
         cmd.ExecuteNonQuery()
     sqlProcessor a exec b
 
+/// Executes a printf-formatted query and returns a data reader
 let execReaderF connectionFactory a = PrintfFormatProc (sqlProcessorToDataReader connectionFactory) a
+
+/// Executes a printf-formatted SQL statement and returns the number of rows affected
 let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorNonQuery connectionFactory) a
 
+/// Represents a parameter to a command
 type Parameter = {
     DbType: DbType
     Direction: ParameterDirection
@@ -112,6 +119,7 @@ type Parameter = {
           ParameterName = parameterName
           Value = value }
 
+/// Adds a parameter to a command
 let addParameter (cmd: #IDbCommand) (p: Parameter) =
     let par = cmd.CreateParameter()
     par.DbType <- p.DbType
@@ -131,9 +139,11 @@ let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType:
 let internal inferParameterDbType (p: string * obj) = 
     Parameter.make(fst p, snd p)
 
+/// Creates a list of parameters
 let parameters (p: (string * obj) list) = 
     p |> List.map inferParameterDbType
 
+/// Executes a query and returns a data reader
 let execReader (cmgr: ConnectionManager) (sql: string) (parameters: Parameter list) =
     let create,dispose = cmgr
     let connection = create()
@@ -141,12 +151,14 @@ let execReader (cmgr: ConnectionManager) (sql: string) (parameters: Parameter li
     let dispose() = dispose connection
     new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader    
 
+/// Executes a SQL statement and returns the number of rows affected
 let execNonQuery (cmgr: ConnectionManager) (sql: string) (parameters: Parameter list) =
     let execNonQuery' connection = 
         use cmd = prepareCommand connection sql CommandType.Text parameters
         cmd.ExecuteNonQuery()
     doWithConnection cmgr execNonQuery'
 
+/// Wraps a function in a transaction with the specified <see cref="IsolationLevel"/>
 let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionManager) f =
     let transactionalWithIsolation' (conn: IDbConnection) = 
         let id = Guid.NewGuid().ToString()
@@ -163,11 +175,14 @@ let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionMana
             reraise()
     fun () -> doWithConnection cmgr transactionalWithIsolation'
 
+/// Wraps a function in a transaction
 let transactional a = 
     transactionalWithIsolation IsolationLevel.Unspecified a
 
+/// Transaction result
 type TxResult<'a> = Success of 'a | Failure of exn
 
+/// Wraps a function in a transaction, returns a <see cref="TxResult{T}"/>
 let transactional2 (cmgr: ConnectionManager) f =
     let transactional2' (conn: IDbConnection) =
         let tx = conn.BeginTransaction()
@@ -180,18 +195,23 @@ let transactional2 (cmgr: ConnectionManager) f =
             Failure e
     fun () -> doWithConnection cmgr transactional2'
 
+/// True if the value is a DB null
 let isNull a = DBNull.Value.Equals a
 
+/// Reads a field from a <see cref="IDataRecord"/>, returns None if null, otherwise Some x
 let readField (field: string) (record: #IDataRecord) : 'a option =
     let o = record.[field]
     if isNull o
         then None
         else Some (unbox o)
 
+/// Reads an integer field from a <see cref="IDataRecord"/>, returns None if null, otherwise Some x
 let readInt : string -> #IDataRecord -> int option = readField 
 
+/// Reads a string field from a <see cref="IDataRecord"/>, returns None if null, otherwise Some x
 let readString : string -> #IDataRecord -> string option = readField 
 
+/// Maps a <see cref="IDataReader"/> as a scalar result
 let mapScalar (dr: #IDataReader) =
     try
         if dr.Read()
@@ -200,9 +220,11 @@ let mapScalar (dr: #IDataReader) =
     finally
         dr.Dispose()
 
+/// Executes the query, and returns the first column of the first row in the resultset returned by the query. Extra columns or rows are ignored.
 let execScalar a b c =
     execReader a b c |> mapScalar
 
+/// Converts None to DB null
 let writeOption = 
     function
     | None -> box DBNull.Value
