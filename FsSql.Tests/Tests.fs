@@ -87,8 +87,8 @@ let userMapper r =
 
 let selectById conn = Sql.execReaderF conn "select * from person where id = %d"
 
-let getUser conn =
-    selectById conn |> Sql.getOne userMapper
+let getUser conn id =
+    selectById conn id |> Sql.mapOne userMapper
 
 let findUser conn =
     selectById conn |> Sql.findOne userMapper

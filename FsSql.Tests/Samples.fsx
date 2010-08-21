@@ -68,3 +68,19 @@ execReader "select * from user" []
 execNonQueryf "delete from user where id > %d" 10 |> ignore
 
 printfn "Now there are %d users" (countUsers())
+
+// a record type representing a row in the table
+type User = {
+    id: int
+    name: string
+    address: string option
+}
+
+// maps a raw data record as a User record
+let asUser (r: #IDataRecord) =
+    {id = (r?id).Value; name = (r?name).Value; address = r?address}
+
+// get the first user
+let firstUser = execReader "select * from user limit 1" [] |> Sql.mapOne asUser 
+
+printfn "first user's name: %s" firstUser.name

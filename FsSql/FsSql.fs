@@ -240,8 +240,8 @@ let findOne mapper query id =
         then None
         else Some r.[0]
 
-let getOne mapper query id =
-    query id
+let mapOne mapper datareader =
+    datareader
     |> Seq.ofDataReader
     |> Seq.map mapper
     |> Enumerable.Single
