@@ -230,8 +230,8 @@ let writeOption =
     | None -> box DBNull.Value
     | Some x -> box x
 
-let findOne mapper query id =
-    let r = query id
+let mapFirst mapper datareader =
+    let r = datareader
             |> Seq.ofDataReader
             |> Seq.map mapper
             |> Seq.truncate 1
