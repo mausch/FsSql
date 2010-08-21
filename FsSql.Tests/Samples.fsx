@@ -28,7 +28,7 @@ exec "create table user (id int primary key not null, name varchar not null, add
 let insertUser connMgr id name address = 
     Sql.execNonQuery connMgr 
         "insert into user (id,name,address) values (@id,@name,@address)"
-        (Sql.parameters ["@id", box id; "@name", box name; "@address", Sql.writeOption address])
+        (Sql.parameters ["@id", box id; "@name", box name; "@address", Option.toDBNull address])
 
 // a function that inserts N records with some predefined values
 let insertNUsers n conn =

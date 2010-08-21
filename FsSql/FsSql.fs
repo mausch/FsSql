@@ -224,12 +224,6 @@ let mapScalar (dr: #IDataReader) =
 let execScalar a b c =
     execReader a b c |> mapScalar
 
-/// Converts None to DB null
-let writeOption = 
-    function
-    | None -> box DBNull.Value
-    | Some x -> box x
-
 let mapFirst mapper datareader =
     let r = datareader
             |> Seq.ofDataReader

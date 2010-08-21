@@ -42,6 +42,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="prelude.fs" />
+    <Compile Include="OptionExtensions.fs" />
     <Compile Include="DictDataRecord.fs" />
     <Compile Include="DataReaderWrapper.fs" />
     <Compile Include="SeqExtensions.fs" />
