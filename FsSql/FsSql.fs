@@ -201,9 +201,7 @@ let isNull a = DBNull.Value.Equals a
 /// Reads a field from a <see cref="IDataRecord"/>, returns None if null, otherwise Some x
 let readField (field: string) (record: #IDataRecord) : 'a option =
     let o = record.[field]
-    if isNull o
-        then None
-        else Some (unbox o)
+    Option.fromDBNull o
 
 /// Reads an integer field from a <see cref="IDataRecord"/>, returns None if null, otherwise Some x
 let readInt : string -> #IDataRecord -> int option = readField 

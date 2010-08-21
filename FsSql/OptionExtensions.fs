@@ -4,7 +4,7 @@ open System
 
 /// Maps DBNull to None, otherwise Some x
 let fromDBNull (o: obj) =
-    if DBNull.Value.Equals(o)
+    if DBNull.Value.Equals o
         then None
         else Some (unbox o)
 
