@@ -43,7 +43,8 @@ let internal doWithConnection (cmgr: ConnectionManager) f =
     
 let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
     if not (FSharpType.IsFunction typeof<'a>) then
-        unbox (worker (query.Value, []))
+        let result = worker (query.Value, [])
+        unbox result
     else
         let rec getFlattenedFunctionElements (functionType: Type) =
             let domain, range = FSharpType.GetFunctionElements functionType
@@ -51,15 +52,21 @@ let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfF
                 then domain::[range]
                 else domain::getFlattenedFunctionElements(range)
         let types = getFlattenedFunctionElements typeof<'a>
+        let rec makeFunctionType (types: Type list) =
+            match types with
+            | [x;y] -> FSharpType.MakeFunctionType(x,y)
+            | x::xs -> FSharpType.MakeFunctionType(x,makeFunctionType xs)
+            | _ -> failwith "shouldn't happen"
         let rec proc (types: Type list) (values: obj list) (a: obj) : obj =
+            let id = Guid.NewGuid().ToString()
             let values = a::values
             match types with
-            | [x;_] -> 
+            | [x;y] -> 
                 let result = worker (query.Value, List.rev values)
                 box result
             | x::y::z::xs -> 
                 let cont = proc (y::z::xs) values
-                let ft = FSharpType.MakeFunctionType(y,z)
+                let ft = makeFunctionType (y::z::xs)
                 let cont = FSharpValue.MakeFunction(ft, cont)
                 box cont
             | _ -> failwith "shouldn't happen"
