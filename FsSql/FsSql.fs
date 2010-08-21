@@ -129,7 +129,7 @@ let addParameter (cmd: #IDbCommand) (p: Parameter) =
     cmd.Parameters.Add par |> ignore
     cmd
 
-let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandType) (parameters: Parameter list) =
+let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandType) (parameters: #seq<Parameter>) =
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
     cmd.CommandType <- cmdType
@@ -140,11 +140,11 @@ let internal inferParameterDbType (p: string * obj) =
     Parameter.make(fst p, snd p)
 
 /// Creates a list of parameters
-let parameters (p: (string * obj) list) = 
-    p |> List.map inferParameterDbType
+let parameters (p: #seq<string * obj>) = 
+    p |> Seq.map inferParameterDbType
 
 /// Executes a query and returns a data reader
-let execReader (cmgr: ConnectionManager) (sql: string) (parameters: Parameter list) =
+let execReader (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let create,dispose = cmgr
     let connection = create()
     use cmd = prepareCommand connection sql CommandType.Text parameters
@@ -152,7 +152,7 @@ let execReader (cmgr: ConnectionManager) (sql: string) (parameters: Parameter li
     new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader    
 
 /// Executes a SQL statement and returns the number of rows affected
-let execNonQuery (cmgr: ConnectionManager) (sql: string) (parameters: Parameter list) =
+let execNonQuery (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let execNonQuery' connection = 
         use cmd = prepareCommand connection sql CommandType.Text parameters
         cmd.ExecuteNonQuery()
