@@ -403,11 +403,10 @@ let ``datareader with lazylist persistent`` () =
     dataReaderWithLazyList (withNewDbFile())
 
 [<Test>]
-let ``join``() =
+let ``duplicate field names are NOT supported``() =
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into address (id, street, city) values (%d, %s, %s)" 1 "fake st" "NY" |> ignore
     Sql.execNonQueryF c "insert into person (id, name, address) values (%d, %s, %d)" 5 "John" 1 |> ignore
-    let reader = Sql.execReader c "select * from person p join address a on a.id = p.address" []
-    let r = reader |> List.ofDataReader
-    printfn "there are %d persons with address" r.Length
+    use reader = Sql.execReader c "select * from person p join address a on a.id = p.address" []
+    assertThrows<ArgumentException> (fun () -> reader |> List.ofDataReader |> ignore)
     ()

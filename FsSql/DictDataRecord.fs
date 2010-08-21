@@ -23,7 +23,10 @@ type internal DictDataRecord(dr: IDataRecord) =
                     value = dr.GetValue i
                     dataTypeName = dr.GetDataTypeName i
                     fieldType = dr.GetFieldType i}
-            x.Add(name, entry)
+            try
+                x.Add(name, entry)
+            with :? ArgumentException as e -> 
+                raise <| ArgumentException("Duplicate field names in resultset", e)
         x
 
     let getByIndex (i: int) =
