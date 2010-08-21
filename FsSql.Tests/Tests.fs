@@ -9,15 +9,6 @@ open System.Linq
 open FsSqlPrelude
 open Microsoft.FSharp.Collections
 
-let assertThrows<'e when 'e :> exn> f =
-    let action = Gallio.Common.Action f
-    Assert.Throws<'e> action |> ignore
-
-let catch defaultValue f a =
-    try
-        f a
-    with e -> defaultValue
-
 [<Test>]
 let catchtest() =
     let f a b = a/b
