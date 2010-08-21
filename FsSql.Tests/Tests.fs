@@ -382,7 +382,6 @@ let ``datareader to seq is cacheable 3 persistent`` () =
 
 let dataReaderWithLazyList conn =
     insertUsers conn
-    // this doesn't dispose the data reader either!
     let reader = Sql.execReader conn "select * from person" []
     let withReader reader =
         let all = reader
