@@ -38,10 +38,7 @@ type internal DictDataRecord(dr: IDataRecord) =
             then None
             else Some (v :?> Entry)
 
-    let (>>=) x f =
-        match x with
-        | None -> None
-        | Some a -> f a
+    let (>>=) x f = Option.bind f x
 
     let optionToDefault =
         function
