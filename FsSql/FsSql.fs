@@ -222,6 +222,7 @@ let mapScalar (dr: #IDataReader) =
 let execScalar a b c =
     execReader a b c |> mapScalar
 
+/// Maps a datareader's first row
 let mapFirst mapper datareader =
     let r = datareader
             |> Seq.ofDataReader
@@ -232,8 +233,13 @@ let mapFirst mapper datareader =
         then None
         else Some r.[0]
 
+/// Maps a datareader's single row. Throws if there isn't exactly one row
 let mapOne mapper datareader =
     datareader
     |> Seq.ofDataReader
     |> Seq.map mapper
     |> Enumerable.Single
+
+/// Maps a datareader
+let map mapper datareader =
+    datareader |> Seq.ofDataReader |> Seq.map mapper
