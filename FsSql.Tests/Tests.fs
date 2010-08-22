@@ -31,7 +31,7 @@ let createPersistentConnection() =
 
 type Address = {
     id: int
-    street: string
+    street: string option
     city: string
 }
 
@@ -46,7 +46,7 @@ let createSchema conn =
     exec "drop table if exists person"
     exec "create table person (id int primary key not null, name varchar not null, address int null)"
     exec "drop table if exists address"
-    exec "create table address (id int primary key not null, street varchar null, city varchar null)"
+    exec "create table address (id int primary key not null, street varchar null, city varchar not null)"
     log "done creating schema"
 
 let createConnectionAndSchema() =
@@ -335,7 +335,7 @@ let ``datareader to seq is cacheable`` () =
         let conn = Sql.withConnection conn
         dataReaderToSeqIsCacheable conn)
 
-[<Test>]
+[<Test;Ignore("locks the database because it doesn't close the connection")>]
 let ``datareader to seq is cacheable persistent``() =
     dataReaderToSeqIsCacheable (withNewDbFile())
 
@@ -409,4 +409,33 @@ let ``duplicate field names are NOT supported``() =
     Sql.execNonQueryF c "insert into person (id, name, address) values (%d, %s, %d)" 5 "John" 1 |> ignore
     use reader = Sql.execReader c "select * from person p join address a on a.id = p.address" []
     assertThrows<ArgumentException> (fun () -> reader |> List.ofDataReader |> ignore)
+    ()
+
+[<Test>]
+let ``inner join``() =
+    let c = withNewDbFile()
+    Sql.execNonQueryF c "insert into address (id, street, city) values (%d, %s, %s)" 1 "fake st" "NY" |> ignore
+    Sql.execNonQueryF c "insert into person (id, name, address) values (%d, %s, %d)" 5 "John" 1 |> ignore
+    let recordFields t = FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
+    let fieldAlias alias = Array.map (fun s -> sprintf "%s.%s %s_%s" alias s alias s)
+    let sjoin (sep: string) (strings: string[]) = String.Join(sep, strings)
+    let recordFieldsAlias ty alias = recordFields ty |> fieldAlias alias |> sjoin ","
+    let personFields = recordFieldsAlias typeof<Person> "p"
+    let addressFields = recordFieldsAlias typeof<Address> "a"
+    let sql = sprintf "select %s,%s from person p join address a on a.id = p.address" personFields addressFields
+    printfn "%s" sql
+    let asAddress (r: #IDataRecord) =
+        {id = (r?a_id).Value; street = r?a_street; city = (r?a_city).Value }
+    let asAddressOption (r: #IDataRecord) =
+        match r?a_id with
+        | None -> None
+        | Some id -> Some (asAddress r)
+    let asPerson (r: #IDataRecord) =
+        {id = (r?p_id).Value; name = (r?p_name).Value; address = asAddressOption r}
+    let records = Sql.execReader c sql [] |> Sql.map asPerson |> List.ofSeq
+    Assert.AreEqual(1, records.Length)
+    let person = records.[0]
+    Assert.AreEqual(5, person.id)
+    Assert.IsTrue person.address.IsSome
+    Assert.AreEqual("fake st", person.address.Value.street.Value)
     ()
