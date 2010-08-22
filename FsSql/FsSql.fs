@@ -250,3 +250,13 @@ let mapOne mapper datareader =
 /// Maps a datareader
 let map mapper datareader =
     datareader |> Seq.ofDataReader |> Seq.map mapper
+
+/// <summary>
+/// Converts a mapper into an optional mapper. 
+/// Intended to be used when mapping nullable joined tables
+/// </summary>
+/// <param name="fieldName">Field to use to check for null entity</param>
+let optionalBy fieldName mapper r =
+    match r |> readField fieldName with
+    | None -> None
+    | _ -> Some (mapper r)

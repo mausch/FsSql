@@ -427,11 +427,7 @@ let ``inner join``() =
 
     let asAddress (r: IDataRecord) =
         {id = (r?a_id).Value; street = r?a_street; city = (r?a_city).Value }
-    let optionalBy fieldName mapper r =
-        match r |> Sql.readField fieldName with
-        | None -> None
-        | Some v -> Some (mapper r)
-    let asAddressOption = asAddress |> optionalBy "a_id"
+    let asAddressOption = asAddress |> Sql.optionalBy "a_id"
     let asPerson (r: IDataRecord) =
         {id = (r?p_id).Value; name = (r?p_name).Value; address = asAddressOption r}
 
