@@ -98,7 +98,8 @@ let updateUser conn (p: Person) =
 let countUsers conn : int64 = 
     Sql.execScalar conn "select count(*) from person" []
 
-let deleteUser conn = Sql.execNonQueryF conn "delete person where id = %d" |> ignore
+let deleteUser conn id = 
+    Sql.execNonQueryF conn "delete person where id = %d" id |> ignore
 
 let insertThenGet conn = 
     insertUser conn {id = 1; name = "pepe"; address = None}
