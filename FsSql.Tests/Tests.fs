@@ -93,6 +93,23 @@ let insertUser conn (p: Person) =
     //Sql.execNonQueryF conn "insert into person (id, name) values (%d, %s)" p.id p.name
 
 let updateUser conn (p: Person) =
+    // cascade address
+    let addressId =
+        match p.address with
+        | None -> None
+        | Some a ->
+            let cityStreet = Sql.parameters ["@street", box a.street; "@city", box a.city]
+            let (.@) = Seq.append
+            if a.id = 0
+                then Sql.execReader conn 
+                        "insert into address (street, city) values (@street, @city); select last_insert_rowid()"
+                        cityStreet 
+                        |> Sql.mapScalar |> Some
+                else Sql.execNonQuery conn
+                        "update address set street = @street, city = @city where id = @id"
+                        (cityStreet .@ Sql.parameters ["@id", box a.id]) |> ignore
+                     Some a.id
+
     Sql.execNonQueryF conn "update person set name = %s where id = %d" p.name p.id
 
 let countUsers conn : int64 = 
