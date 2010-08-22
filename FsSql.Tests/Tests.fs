@@ -424,14 +424,17 @@ let ``inner join``() =
     let addressFields = recordFieldsAlias typeof<Address> "a"
     let sql = sprintf "select %s,%s from person p join address a on a.id = p.address" personFields addressFields
     printfn "%s" sql
-    let asAddress (r: #IDataRecord) =
+
+    let asAddress (r: IDataRecord) =
         {id = (r?a_id).Value; street = r?a_street; city = (r?a_city).Value }
-    let asAddressOption (r: #IDataRecord) =
-        match r?a_id with
+    let optionalBy fieldName mapper r =
+        match r |> Sql.readField fieldName with
         | None -> None
-        | Some id -> Some (asAddress r)
-    let asPerson (r: #IDataRecord) =
+        | Some v -> Some (mapper r)
+    let asAddressOption = asAddress |> optionalBy "a_id"
+    let asPerson (r: IDataRecord) =
         {id = (r?p_id).Value; name = (r?p_name).Value; address = asAddressOption r}
+
     let records = Sql.execReader c sql [] |> Sql.map asPerson |> List.ofSeq
     Assert.AreEqual(1, records.Length)
     let person = records.[0]
