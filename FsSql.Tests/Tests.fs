@@ -414,7 +414,9 @@ let ``duplicate field names are NOT supported``() =
 let ``inner join``() =
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
-    Sql.execNonQueryF c "insert into address (id, person, street, city) values (%d, %d, %s, %s)" 1 5 "fake st" "NY" |> ignore
+    let insertAddress = Sql.execNonQueryF c "insert into address (id, person, street, city) values (%d, %d, %s, %s)"
+    insertAddress 1 5 "fake st" "NY" |> ignore
+    insertAddress 2 5 "another address" "CO" |> ignore
     let recordFields t = FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
     let fieldAlias alias = Array.map (fun s -> sprintf "%s.%s %s_%s" alias s alias s)
     let sjoin (sep: string) (strings: string[]) = String.Join(sep, strings)
@@ -429,8 +431,15 @@ let ``inner join``() =
     let asPerson (r: IDataRecord) =
         {id = (r?p_id).Value; name = (r?p_name).Value; parent = r?p_parent}
 
-    let records = Sql.execReader c sql [] |> Sql.map asPerson |> List.ofSeq
+    let asPersonWithAddresses (r: IDataRecord) =
+        asPerson r, asAddress r
+
+    use reader = Sql.execReader c sql []
+    let groupByFst sequence =
+        sequence |> Seq.groupBy fst |> Seq.map (fun g -> fst g, snd g |> Seq.map snd)
+    let records = reader |> Sql.map asPersonWithAddresses |> Seq.cache |> groupByFst |> List.ofSeq
     Assert.AreEqual(1, records.Length)
-    let person = records.[0]
+    let person,addresses = records.[0]
     Assert.AreEqual(5, person.id)
+    Assert.AreEqual(2, Seq.length addresses)
     ()
