@@ -416,11 +416,6 @@ let asAddress (r: IDataRecord) =
 let asPerson (r: IDataRecord) =
     {id = (r?p_id).Value; name = (r?p_name).Value; parent = r?p_parent}
 
-let recordFields t = FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
-let fieldAlias alias = Array.map (fun s -> sprintf "%s.%s %s_%s" alias s alias s)
-let sjoin (sep: string) (strings: string[]) = String.Join(sep, strings)
-let recordFieldsAlias ty alias = recordFields ty |> fieldAlias alias |> sjoin ","
-
 [<Test>]
 let ``inner join``() =
     let c = withNewDbFile()
@@ -429,8 +424,8 @@ let ``inner join``() =
     insertAddress 1 5 "fake st" "NY" |> ignore
     insertAddress 2 5 "another address" "CO" |> ignore
 
-    let personFields = recordFieldsAlias typeof<Person> "p"
-    let addressFields = recordFieldsAlias typeof<Address> "a"
+    let personFields = Sql.recordFieldsAlias typeof<Person> "p"
+    let addressFields = Sql.recordFieldsAlias typeof<Address> "a"
     let sql = sprintf "select %s,%s from person p join address a on p.id = a.person" personFields addressFields
     printfn "%s" sql
 
@@ -457,8 +452,8 @@ let ``left join``() =
     insertAddress 1 5 "fake st" "NY" |> ignore
     insertAddress 2 5 "another address" "CO" |> ignore
 
-    let personFields = recordFieldsAlias typeof<Person> "p"
-    let addressFields = recordFieldsAlias typeof<Address> "a"
+    let personFields = Sql.recordFieldsAlias typeof<Person> "p"
+    let addressFields = Sql.recordFieldsAlias typeof<Address> "a"
     let sql = sprintf "select %s,%s from person p left join address a on p.id = a.person order by p.id" personFields addressFields
     printfn "%s" sql
 

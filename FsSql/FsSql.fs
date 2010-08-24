@@ -260,3 +260,18 @@ let optionalBy fieldName mapper r =
     match r |> readField fieldName with
     | None -> None
     | _ -> Some (mapper r)
+
+/// Gets all field names from a record type
+let recordFields t = 
+    FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
+
+let internal fieldAlias alias = 
+    Array.map (fun s -> sprintf "%s.%s %s_%s" alias s alias s)
+
+let internal sjoin (sep: string) (strings: string[]) = 
+    String.Join(sep, strings)
+
+/// Gets all field names from a record type formatted with an alias.
+/// E.g. with a field "id" and alias "a", returns "a.id a_id"
+let recordFieldsAlias ty alias = 
+    recordFields ty |> fieldAlias alias |> sjoin ","
