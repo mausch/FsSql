@@ -26,3 +26,7 @@ let ofDataReader (dr: #IDataReader) =
             log "datareader dispose"
             if not (dr.IsClosed)
                 then dr.Dispose()}
+
+let groupByFst sequence =
+    sequence |> Seq.groupBy fst |> Seq.map (fun g -> fst g, snd g |> Seq.map snd)
+    

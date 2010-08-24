@@ -435,9 +435,7 @@ let ``inner join``() =
         asPerson r, asAddress r
 
     use reader = Sql.execReader c sql []
-    let groupByFst sequence =
-        sequence |> Seq.groupBy fst |> Seq.map (fun g -> fst g, snd g |> Seq.map snd)
-    let records = reader |> Sql.map asPersonWithAddresses |> Seq.cache |> groupByFst |> List.ofSeq
+    let records = reader |> Sql.map asPersonWithAddresses |> Seq.cache |> Seq.groupByFst |> List.ofSeq
     Assert.AreEqual(1, records.Length)
     let person,addresses = records.[0]
     Assert.AreEqual(5, person.id)
