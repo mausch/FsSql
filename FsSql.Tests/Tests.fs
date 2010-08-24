@@ -31,6 +31,7 @@ let createPersistentConnection() =
 
 type Address = {
     id: int
+    person: int
     street: string option
     city: string
 }
@@ -38,15 +39,15 @@ type Address = {
 type Person = {
     id: int
     name: string
-    address: Address option
+    parent: int option
 }
 
 let createSchema conn =
     let exec a = Sql.execNonQuery (Sql.withConnection conn) a [] |> ignore
     exec "drop table if exists person"
-    exec "create table person (id int primary key not null, name varchar not null, address int null)"
+    exec "create table person (id int primary key not null, name varchar not null, parent int null)"
     exec "drop table if exists address"
-    exec "create table address (id int primary key not null, street varchar null, city varchar not null)"
+    exec "create table address (id int primary key not null, person int not null, street varchar null, city varchar not null)"
     log "done creating schema"
 
 let createConnectionAndSchema() =
@@ -75,7 +76,7 @@ let withNewDbFile() =
     Sql.withNewConnection createPersistentConnection
 
 let userMapper r = 
-    { id = (r?id).Value ; name = (r?name).Value; address = None}
+    { id = (r?id).Value ; name = (r?name).Value; parent = r?parent }
 
 let selectById conn = Sql.execReaderF conn "select * from person where id = %d"
 
@@ -92,26 +93,6 @@ let insertUser conn (p: Person) =
         |> ignore
     //Sql.execNonQueryF conn "insert into person (id, name) values (%d, %s)" p.id p.name
 
-let updateUser conn (p: Person) =
-    // cascade address
-    let addressId =
-        match p.address with
-        | None -> None
-        | Some a ->
-            let cityStreet = Sql.parameters ["@street", box a.street; "@city", box a.city]
-            let (.@) = Seq.append
-            if a.id = 0
-                then Sql.execReader conn 
-                        "insert into address (street, city) values (@street, @city); select last_insert_rowid()"
-                        cityStreet 
-                        |> Sql.mapScalar |> Some
-                else Sql.execNonQuery conn
-                        "update address set street = @street, city = @city where id = @id"
-                        (cityStreet .@ Sql.parameters ["@id", box a.id]) |> ignore
-                     Some a.id
-
-    Sql.execNonQueryF conn "update person set name = %s where id = %d" p.name p.id
-
 let countUsers conn : int64 = 
     Sql.execScalar conn "select count(*) from person" []
 
@@ -119,7 +100,7 @@ let deleteUser conn id =
     Sql.execNonQueryF conn "delete person where id = %d" id |> ignore
 
 let insertThenGet conn = 
-    insertUser conn {id = 1; name = "pepe"; address = None}
+    insertUser conn {id = 1; name = "pepe"; parent = None}
     printfn "count: %d" (countUsers conn)
     let p = getUser conn 1
     printfn "id=%d, name=%s" p.id p.name
@@ -150,7 +131,7 @@ let ``find non-existent record persistent``() =
     findNonExistentRecord (withNewDbFile())
 
 let findExistentRecord conn = 
-    insertUser conn {id = 1; name = "pepe"; address = None}
+    insertUser conn {id = 1; name = "pepe"; parent = None}
     let p = findUser conn 1
     Assert.IsTrue p.IsSome
     printfn "end test"
@@ -167,7 +148,7 @@ let ``find existent record persistent``() =
 
 let getMany conn = 
     for i in 1..50 do
-        insertUser conn {id = i; name = "pepe" + i.ToString(); address = None}
+        insertUser conn {id = i; name = "pepe" + i.ToString(); parent = None}
     let first10 = Sql.execReaderF conn "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
     for i in first10 do
         printfn "%d" (i?id).Value
@@ -185,8 +166,8 @@ let ``get many persistent``() =
     getMany (withNewDbFile())
 
 let someTranAndFail conn =
-    insertUser conn {id = 1; name = "pepe"; address = None}
-    insertUser conn {id = 2; name = "jose"; address = None}
+    insertUser conn {id = 1; name = "pepe"; parent = None}
+    insertUser conn {id = 2; name = "jose"; parent = None}
     failwith "Bla"
     ()
 
@@ -208,8 +189,8 @@ let ``transaction with exception persistent``() =
     transactionWithException (withNewDbFile())
 
 let someTran conn =
-    insertUser conn {id = 1; name = "pepe"; address = None}
-    insertUser conn {id = 2; name = "jose"; address = None}
+    insertUser conn {id = 1; name = "pepe"; parent = None}
+    insertUser conn {id = 2; name = "jose"; parent = None}
     ()
 
 let transactionCommitted conn =
@@ -231,11 +212,11 @@ let ``transaction committed persistent``() =
 
 let someTranWithSubTran conn =
     let subtran conn = 
-        insertUser conn {id = 3; name = "jorge"; address = None}
+        insertUser conn {id = 3; name = "jorge"; parent = None}
         failwith "this fails"
     (Sql.transactional conn subtran)()
-    insertUser conn {id = 1; name = "pepe"; address = None}
-    insertUser conn {id = 2; name = "jose"; address = None}
+    insertUser conn {id = 1; name = "pepe"; parent = None}
+    insertUser conn {id = 2; name = "jose"; parent = None}
     ()
 
 let nestedTransactionsAreNotSupported conn =
@@ -293,7 +274,7 @@ let insertUsers conn =
     let insert conn =
         //for i in 100000000..100050000 do
         for i in 1..10 do
-            insertUser conn {id = i; name = "pepe" + i.ToString(); address = None}
+            insertUser conn {id = i; name = "pepe" + i.ToString(); parent = None}
     let insert = Sql.transactionalWithIsolation IsolationLevel.ReadCommitted conn insert
     insert()
     
@@ -423,8 +404,8 @@ let ``datareader with lazylist persistent`` () =
 [<Test>]
 let ``duplicate field names are NOT supported``() =
     let c = withNewDbFile()
-    Sql.execNonQueryF c "insert into address (id, street, city) values (%d, %s, %s)" 1 "fake st" "NY" |> ignore
-    Sql.execNonQueryF c "insert into person (id, name, address) values (%d, %s, %d)" 5 "John" 1 |> ignore
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    Sql.execNonQueryF c "insert into address (id, street, city, person) values (%d, %s, %s, %d)" 1 "fake st" "NY" 5 |> ignore
     use reader = Sql.execReader c "select * from person p join address a on a.id = p.address" []
     assertThrows<ArgumentException> (fun () -> reader |> List.ofDataReader |> ignore)
     ()
@@ -432,27 +413,24 @@ let ``duplicate field names are NOT supported``() =
 [<Test>]
 let ``inner join``() =
     let c = withNewDbFile()
-    Sql.execNonQueryF c "insert into address (id, street, city) values (%d, %s, %s)" 1 "fake st" "NY" |> ignore
-    Sql.execNonQueryF c "insert into person (id, name, address) values (%d, %s, %d)" 5 "John" 1 |> ignore
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    Sql.execNonQueryF c "insert into address (id, person, street, city) values (%d, %d, %s, %s)" 1 5 "fake st" "NY" |> ignore
     let recordFields t = FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
     let fieldAlias alias = Array.map (fun s -> sprintf "%s.%s %s_%s" alias s alias s)
     let sjoin (sep: string) (strings: string[]) = String.Join(sep, strings)
     let recordFieldsAlias ty alias = recordFields ty |> fieldAlias alias |> sjoin ","
     let personFields = recordFieldsAlias typeof<Person> "p"
     let addressFields = recordFieldsAlias typeof<Address> "a"
-    let sql = sprintf "select %s,%s from person p join address a on a.id = p.address" personFields addressFields
+    let sql = sprintf "select %s,%s from person p join address a on p.id = a.person" personFields addressFields
     printfn "%s" sql
 
     let asAddress (r: IDataRecord) =
-        {id = (r?a_id).Value; street = r?a_street; city = (r?a_city).Value }
-    let asAddressOption = asAddress |> Sql.optionalBy "a_id"
+        {id = (r?a_id).Value; street = r?a_street; city = (r?a_city).Value; person = (r?a_person).Value }
     let asPerson (r: IDataRecord) =
-        {id = (r?p_id).Value; name = (r?p_name).Value; address = asAddressOption r}
+        {id = (r?p_id).Value; name = (r?p_name).Value; parent = r?p_parent}
 
     let records = Sql.execReader c sql [] |> Sql.map asPerson |> List.ofSeq
     Assert.AreEqual(1, records.Length)
     let person = records.[0]
     Assert.AreEqual(5, person.id)
-    Assert.IsTrue person.address.IsSome
-    Assert.AreEqual("fake st", person.address.Value.street.Value)
     ()
