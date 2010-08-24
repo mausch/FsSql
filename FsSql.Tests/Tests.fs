@@ -410,6 +410,17 @@ let ``duplicate field names are NOT supported``() =
     assertThrows<ArgumentException> (fun () -> reader |> List.ofDataReader |> ignore)
     ()
 
+let asAddress (r: IDataRecord) =
+    {id = (r?a_id).Value; street = r?a_street; city = (r?a_city).Value; person = (r?a_person).Value }
+
+let asPerson (r: IDataRecord) =
+    {id = (r?p_id).Value; name = (r?p_name).Value; parent = r?p_parent}
+
+let recordFields t = FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
+let fieldAlias alias = Array.map (fun s -> sprintf "%s.%s %s_%s" alias s alias s)
+let sjoin (sep: string) (strings: string[]) = String.Join(sep, strings)
+let recordFieldsAlias ty alias = recordFields ty |> fieldAlias alias |> sjoin ","
+
 [<Test>]
 let ``inner join``() =
     let c = withNewDbFile()
@@ -417,19 +428,11 @@ let ``inner join``() =
     let insertAddress = Sql.execNonQueryF c "insert into address (id, person, street, city) values (%d, %d, %s, %s)"
     insertAddress 1 5 "fake st" "NY" |> ignore
     insertAddress 2 5 "another address" "CO" |> ignore
-    let recordFields t = FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
-    let fieldAlias alias = Array.map (fun s -> sprintf "%s.%s %s_%s" alias s alias s)
-    let sjoin (sep: string) (strings: string[]) = String.Join(sep, strings)
-    let recordFieldsAlias ty alias = recordFields ty |> fieldAlias alias |> sjoin ","
+
     let personFields = recordFieldsAlias typeof<Person> "p"
     let addressFields = recordFieldsAlias typeof<Address> "a"
     let sql = sprintf "select %s,%s from person p join address a on p.id = a.person" personFields addressFields
     printfn "%s" sql
-
-    let asAddress (r: IDataRecord) =
-        {id = (r?a_id).Value; street = r?a_street; city = (r?a_city).Value; person = (r?a_person).Value }
-    let asPerson (r: IDataRecord) =
-        {id = (r?p_id).Value; name = (r?p_name).Value; parent = r?p_parent}
 
     let asPersonWithAddresses (r: IDataRecord) =
         asPerson r, asAddress r
@@ -440,4 +443,33 @@ let ``inner join``() =
     let person,addresses = records.[0]
     Assert.AreEqual(5, person.id)
     Assert.AreEqual(2, Seq.length addresses)
+    ()
+
+[<Test>]
+let ``left join``() =
+    let c = withNewDbFile()
+
+    let insertPerson = Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)"
+    insertPerson 5 "John" |> ignore
+    insertPerson 6 "George" |> ignore
+
+    let insertAddress = Sql.execNonQueryF c "insert into address (id, person, street, city) values (%d, %d, %s, %s)"
+    insertAddress 1 5 "fake st" "NY" |> ignore
+    insertAddress 2 5 "another address" "CO" |> ignore
+
+    let personFields = recordFieldsAlias typeof<Person> "p"
+    let addressFields = recordFieldsAlias typeof<Address> "a"
+    let sql = sprintf "select %s,%s from person p left join address a on p.id = a.person order by p.id" personFields addressFields
+    printfn "%s" sql
+
+    let asPersonWithAddresses (r: IDataRecord) =
+        asPerson r, (asAddress |> Sql.optionalBy "a_id") r
+
+    use reader = Sql.execReader c sql []
+    let records = reader |> Sql.map asPersonWithAddresses |> Seq.cache |> Seq.groupByFst |> Seq.mapSnd (Seq.choose id) |> List.ofSeq
+    Assert.AreEqual(2, records.Length)
+    Assert.AreEqual(5, (fst records.[0]).id)
+    Assert.AreEqual(6, (fst records.[1]).id)
+    Assert.AreEqual(2, Seq.length (snd records.[0]))
+    Assert.AreEqual(0, Seq.length (snd records.[1]))
     ()

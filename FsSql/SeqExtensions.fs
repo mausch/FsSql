@@ -27,6 +27,23 @@ let ofDataReader (dr: #IDataReader) =
             if not (dr.IsClosed)
                 then dr.Dispose()}
 
+let mapSnd f sequence = 
+    sequence |> Seq.map (fun (a,b) -> a,f b)
+
+let mapSndMap f sequence =
+    sequence |> mapSnd (Seq.map f)
+
 let groupByFst sequence =
-    sequence |> Seq.groupBy fst |> Seq.map (fun g -> fst g, snd g |> Seq.map snd)
+    sequence 
+    |> Seq.groupBy fst
+    |> mapSndMap snd
     
+let groupByFstSnd sequence =
+    sequence 
+    |> Seq.groupBy (fun (a,b,_) -> a,b)
+    |> mapSndMap (fun (_,_,x) -> x)
+
+let groupBy123 sequence =
+    sequence
+    |> Seq.groupBy (fun (a,b,c,_) -> a,b,c)
+    |> mapSndMap (fun (_,_,_,x) -> x)
