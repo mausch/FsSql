@@ -283,7 +283,7 @@ let dataReaderIsParallelizable conn =
     log "reading"
     let primes = Sql.execReader conn "select * from person" []
                     |> Seq.ofDataReader
-                    |> Seq.map (fun r -> (r?id).Value)
+                    |> PSeq.map (fun r -> (r?id).Value)
                     |> PSeq.filter isPrime
                     |> PSeq.length
     logf "%d primes" primes
@@ -408,7 +408,6 @@ let ``duplicate field names are NOT supported``() =
     Sql.execNonQueryF c "insert into address (id, street, city, person) values (%d, %s, %s, %d)" 1 "fake st" "NY" 5 |> ignore
     use reader = Sql.execReader c "select * from person p join address a on a.id = p.address" []
     assertThrows<ArgumentException> (fun () -> reader |> List.ofDataReader |> ignore)
-    ()
 
 let asAddress (r: IDataRecord) =
     {id = (r?a_id).Value; street = r?a_street; city = (r?a_city).Value; person = (r?a_person).Value }
@@ -438,7 +437,6 @@ let ``inner join``() =
     let person,addresses = records.[0]
     Assert.AreEqual(5, person.id)
     Assert.AreEqual(2, Seq.length addresses)
-    ()
 
 [<Test>]
 let ``left join``() =
@@ -467,7 +465,6 @@ let ``left join``() =
     Assert.AreEqual(6, (fst records.[1]).id)
     Assert.AreEqual(2, Seq.length (snd records.[0]))
     Assert.AreEqual(0, Seq.length (snd records.[1]))
-    ()
 
 [<Test>]
 let ``list of map`` ()=
