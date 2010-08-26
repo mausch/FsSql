@@ -472,5 +472,7 @@ let ``list of map`` ()=
     let insertPerson = Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)"
     insertPerson 5 "John" |> ignore
     use reader = Sql.execReader c "select * from person" []
-    reader |> Sql.map Sql.asMap |> Seq.iter (fun m -> ())
-    ()
+    let keys = reader |> Sql.map Sql.asMap |> Enumerable.First |> Seq.map ((|KeyValue|) >> fst) |> List.ofSeq
+    Assert.AreEqual("id", keys.[0])
+    Assert.AreEqual("name", keys.[1])
+    Assert.AreEqual("parent", keys.[2])
