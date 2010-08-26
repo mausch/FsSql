@@ -265,7 +265,7 @@ let mapOne mapper datareader =
     |> map mapper
     |> Enumerable.Single
 
-let asDict (r: IDataRecord) =
+let asMap (r: IDataRecord) =
     let names = seq {0..r.FieldCount-1} |> Seq.map r.GetName
     let values = seq {0..r.FieldCount-1} |> Seq.map r.GetValue
     Seq.zip names values |> Map.ofSeq

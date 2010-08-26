@@ -475,5 +475,5 @@ let ``list of map`` ()=
     let insertPerson = Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)"
     insertPerson 5 "John" |> ignore
     use reader = Sql.execReader c "select * from person" []
-    reader |> Sql.map Sql.asDict |> Seq.iter (fun m -> ())
+    reader |> Sql.map Sql.asMap |> Seq.iter (fun m -> ())
     ()
