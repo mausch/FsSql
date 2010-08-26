@@ -2,6 +2,7 @@
 
 open MbUnit.Framework
 open System
+open System.Collections.Generic
 open System.Data
 open System.Data.SQLite
 open System.IO
@@ -87,9 +88,12 @@ let findUser conn id =
     selectById conn id |> Sql.mapFirst userMapper
 
 let insertUser conn (p: Person) =
+    let param = Dictionary<string, obj>()
+    param.["@id"] <- p.id
+    param.["@name"] <- p.name
     Sql.execNonQuery conn
         "insert into person (id, name) values (@id, @name)"
-        (Sql.parameters ["@id", box p.id; "@name", box p.name])
+        (Sql.paramsFromDict param)
         |> ignore
     //Sql.execNonQueryF conn "insert into person (id, name) values (%d, %s)" p.id p.name
 

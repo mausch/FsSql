@@ -155,6 +155,9 @@ let internal inferParameterDbType (p: string * obj) =
 let parameters (p: #seq<string * obj>) = 
     p |> Seq.map inferParameterDbType
 
+let paramsFromDict (p: #IDictionary<string, obj>) =
+    p |> Seq.map (|KeyValue|) |> parameters
+
 /// Executes and returns a data reader
 let internal execReaderInternal cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let create,dispose = cmgr
