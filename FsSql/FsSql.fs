@@ -267,6 +267,11 @@ let mapOne mapper datareader =
 let map mapper datareader =
     datareader |> Seq.ofDataReader |> Seq.map mapper
 
+let asDict (r: IDataRecord) =
+    let names = seq {0..r.FieldCount-1} |> Seq.map r.GetName
+    let values = seq {0..r.FieldCount-1} |> Seq.map r.GetValue
+    Seq.zip names values |> Map.ofSeq
+
 /// <summary>
 /// Converts a mapper into an optional mapper. 
 /// Intended to be used when mapping nullable joined tables

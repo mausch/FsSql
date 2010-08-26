@@ -468,3 +468,12 @@ let ``left join``() =
     Assert.AreEqual(2, Seq.length (snd records.[0]))
     Assert.AreEqual(0, Seq.length (snd records.[1]))
     ()
+
+[<Test>]
+let ``list of map`` ()=
+    let c = withNewDbFile()
+    let insertPerson = Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)"
+    insertPerson 5 "John" |> ignore
+    use reader = Sql.execReader c "select * from person" []
+    reader |> Sql.map Sql.asDict |> Seq.iter (fun m -> ())
+    ()
