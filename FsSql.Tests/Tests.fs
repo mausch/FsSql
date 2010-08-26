@@ -94,7 +94,7 @@ let insertUser conn (p: Person) =
     //Sql.execNonQueryF conn "insert into person (id, name) values (%d, %s)" p.id p.name
 
 let countUsers conn : int64 = 
-    Sql.execScalar conn "select count(*) from person" []
+    Sql.execScalar conn "select count(*) from person" [] |> Option.get
 
 let deleteUser conn id = 
     Sql.execNonQueryF conn "delete person where id = %d" id |> ignore

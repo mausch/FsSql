@@ -48,7 +48,7 @@ let insertNUsers2 n = insertNUsers n |> inTransaction
 insertNUsers2 50 ()
 
 let countUsers(): int64 =
-    execScalar "select count(*) from user" []
+    execScalar "select count(*) from user" [] |> Option.get
 
 printfn "%d users" (countUsers())
 

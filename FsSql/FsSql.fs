@@ -232,7 +232,7 @@ let readString : string -> #IDataRecord -> string option = readField
 let mapScalar (dr: #IDataReader) =
     try
         if dr.Read()
-            then unbox dr.[0]
+            then Option.fromDBNull dr.[0]
             else failwith "No results"
     finally
         dr.Dispose()
