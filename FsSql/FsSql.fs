@@ -124,12 +124,7 @@ type Parameter = {
         { DbType = Unchecked.defaultof<DbType>
           Direction = ParameterDirection.Input
           ParameterName = parameterName
-          Value = 
-            match value with
-            | null -> box DBNull.Value
-            | OptionType -> optionToDBNull value
-            | x -> x
-          }
+          Value = value }
 
 /// Adds a parameter to a command
 let addParameter (cmd: #IDbCommand) (p: Parameter) =
@@ -137,7 +132,11 @@ let addParameter (cmd: #IDbCommand) (p: Parameter) =
     par.DbType <- p.DbType
     par.Direction <- p.Direction
     par.ParameterName <- p.ParameterName
-    par.Value <- p.Value
+    par.Value <- 
+        match p.Value with
+        | null -> box DBNull.Value
+        | OptionType -> optionToDBNull p.Value
+        | x -> x
     cmd.Parameters.Add par |> ignore
     cmd
 
