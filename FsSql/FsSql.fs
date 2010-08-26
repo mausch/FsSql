@@ -150,20 +150,32 @@ let internal inferParameterDbType (p: string * obj) =
 let parameters (p: #seq<string * obj>) = 
     p |> Seq.map inferParameterDbType
 
-/// Executes a query and returns a data reader
-let execReader (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
+/// Executes and returns a data reader
+let internal execReaderInternal cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let create,dispose = cmgr
     let connection = create()
-    use cmd = prepareCommand connection sql CommandType.Text parameters
+    use cmd = prepareCommand connection sql cmdType parameters
     let dispose() = dispose connection
-    new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader    
+    new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
 
-/// Executes a SQL statement and returns the number of rows affected
-let execNonQuery (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
+/// Executes a query and returns a data reader
+let execReader connMgr = execReaderInternal CommandType.Text connMgr
+
+/// Executes a stored procedure and returns a data reader
+let execSPReader connMgr = execReaderInternal CommandType.StoredProcedure connMgr
+
+/// Executes and returns the number of rows affected
+let internal execNonQueryInternal cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let execNonQuery' connection = 
-        use cmd = prepareCommand connection sql CommandType.Text parameters
+        use cmd = prepareCommand connection sql cmdType parameters
         cmd.ExecuteNonQuery()
     doWithConnection cmgr execNonQuery'
+
+/// Executes a SQL statement and returns the number of rows affected
+let execNonQuery connMgr = execNonQueryInternal CommandType.Text connMgr
+
+/// Executes a stored procedure and returns the number of rows affected
+let execSPNonQuery connMgr = execNonQueryInternal CommandType.StoredProcedure connMgr
 
 /// Wraps a function in a transaction with the specified <see cref="IsolationLevel"/>
 let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionManager) f =
@@ -228,6 +240,10 @@ let mapScalar (dr: #IDataReader) =
 /// Executes the query, and returns the first column of the first row in the resultset returned by the query. Extra columns or rows are ignored.
 let execScalar a b c =
     execReader a b c |> mapScalar
+
+/// Executes the stored procedure, and returns the first column of the first row in the resultset returned by the query. Extra columns or rows are ignored.
+let execSPScalar a b c =
+    execSPReader a b c |> mapScalar
 
 /// Maps a datareader's first row
 let mapFirst mapper datareader =

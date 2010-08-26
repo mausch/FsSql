@@ -17,3 +17,9 @@ let select() =
     let l = Sql.execReaderF connMgr "select * from HumanResources.Department" |> List.ofDataReader
     printfn "%d" l.Length
     ()
+
+[<Test>]
+let ``stored procedure``() =
+    let l = Sql.execSPReader connMgr "uspGetEmployeeManagers" (Sql.parameters ["@EmployeeID", box 1]) |> List.ofDataReader
+    printfn "%d" l.Length
+    ()
