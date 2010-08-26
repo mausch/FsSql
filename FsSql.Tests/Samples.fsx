@@ -84,3 +84,4 @@ let asUser (r: #IDataRecord) =
 let firstUser = execReader "select * from user limit 1" [] |> Sql.mapOne asUser 
 
 printfn "first user's name: %s" firstUser.name
+printfn "first user does%s have an address" (if firstUser.address.IsNone then " not" else "")
