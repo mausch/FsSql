@@ -265,10 +265,13 @@ let mapOne mapper datareader =
     |> map mapper
     |> Enumerable.Single
 
-let asMap (r: IDataRecord) =
+let asNameValue (r: IDataRecord) =
     let names = seq {0..r.FieldCount-1} |> Seq.map r.GetName
     let values = seq {0..r.FieldCount-1} |> Seq.map r.GetValue
-    Seq.zip names values |> Map.ofSeq
+    Seq.zip names values
+
+let asMap r = r |> asNameValue |> Map.ofSeq
+let asDict r = r |> asNameValue |> dict
 
 /// <summary>
 /// Converts a mapper into an optional mapper. 
