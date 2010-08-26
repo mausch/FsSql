@@ -37,6 +37,7 @@
   <ItemGroup>
     <Compile Include="prelude.fs" />
     <Compile Include="Tests.fs" />
+    <Compile Include="NorthwindTests.fs" />
     <None Include="Samples.fsx" />
   </ItemGroup>
   <ItemGroup>
