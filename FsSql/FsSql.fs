@@ -120,11 +120,16 @@ type Parameter = {
     ParameterName: string
     Value: obj
 } with
-    static member make(parameterName, value) =
+    static member make(parameterName, value: obj) =
         { DbType = Unchecked.defaultof<DbType>
           Direction = ParameterDirection.Input
           ParameterName = parameterName
-          Value = value }
+          Value = 
+            match value with
+            | null -> box DBNull.Value
+            | OptionType -> optionToDBNull value
+            | x -> x
+          }
 
 /// Adds a parameter to a command
 let addParameter (cmd: #IDbCommand) (p: Parameter) =

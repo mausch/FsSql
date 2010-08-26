@@ -25,10 +25,10 @@ exec "drop table if exists user"
 exec "create table user (id int primary key not null, name varchar not null, address varchar null)"
 
 // a function that inserts a record
-let insertUser connMgr id name address = 
+let insertUser connMgr (id: int) (name: string) (address: string option) = 
     Sql.execNonQuery connMgr 
         "insert into user (id,name,address) values (@id,@name,@address)"
-        (Sql.parameters ["@id", box id; "@name", box name; "@address", Option.toDBNull address])
+        (Sql.parameters ["@id", box id; "@name", box name; "@address", box address])
 
 // a function that inserts N records with some predefined values
 let insertNUsers n conn =
