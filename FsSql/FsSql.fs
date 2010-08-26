@@ -245,11 +245,14 @@ let execScalar a b c =
 let execSPScalar a b c =
     execSPReader a b c |> mapScalar
 
+/// Maps a datareader
+let map mapper datareader =
+    datareader |> Seq.ofDataReader |> Seq.map mapper
+
 /// Maps a datareader's first row
 let mapFirst mapper datareader =
-    let r = datareader
-            |> Seq.ofDataReader
-            |> Seq.map mapper
+    let r = datareader 
+            |> map mapper
             |> Seq.truncate 1
             |> Seq.toList
     if r.Length = 0
@@ -259,13 +262,8 @@ let mapFirst mapper datareader =
 /// Maps a datareader's single row. Throws if there isn't exactly one row
 let mapOne mapper datareader =
     datareader
-    |> Seq.ofDataReader
-    |> Seq.map mapper
+    |> map mapper
     |> Enumerable.Single
-
-/// Maps a datareader
-let map mapper datareader =
-    datareader |> Seq.ofDataReader |> Seq.map mapper
 
 let asDict (r: IDataRecord) =
     let names = seq {0..r.FieldCount-1} |> Seq.map r.GetName
