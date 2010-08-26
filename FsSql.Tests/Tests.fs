@@ -406,7 +406,7 @@ let ``duplicate field names are NOT supported``() =
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
     Sql.execNonQueryF c "insert into address (id, street, city, person) values (%d, %s, %s, %d)" 1 "fake st" "NY" 5 |> ignore
-    use reader = Sql.execReader c "select * from person p join address a on a.id = p.address" []
+    use reader = Sql.execReader c "select * from person p join address a on a.person = p.id" []
     assertThrows<ArgumentException> (fun () -> reader |> List.ofDataReader |> ignore)
 
 let asAddress (r: IDataRecord) =
