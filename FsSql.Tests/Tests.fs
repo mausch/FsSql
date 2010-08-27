@@ -435,8 +435,12 @@ let ``inner join``() =
     let asPersonWithAddresses (r: IDataRecord) =
         asPerson r, asAddress r
 
-    use reader = Sql.execReader c sql []
-    let records = reader |> Sql.map asPersonWithAddresses |> Seq.cache |> Seq.groupByFst |> List.ofSeq
+    let records = Sql.execReader c sql []
+                    |> Sql.map asPersonWithAddresses 
+                    |> Seq.cache 
+                    |> Seq.groupByFst 
+                    |> List.ofSeq
+
     Assert.AreEqual(1, records.Length)
     let person,addresses = records.[0]
     Assert.AreEqual(5, person.id)
@@ -462,8 +466,13 @@ let ``left join``() =
     let asPersonWithAddresses (r: IDataRecord) =
         asPerson r, (asAddress |> Sql.optionalBy "a_id") r
 
-    use reader = Sql.execReader c sql []
-    let records = reader |> Sql.map asPersonWithAddresses |> Seq.cache |> Seq.groupByFst |> Seq.mapSnd (Seq.choose id) |> List.ofSeq
+    let records = Sql.execReader c sql [] 
+                    |> Sql.map asPersonWithAddresses 
+                    |> Seq.cache 
+                    |> Seq.groupByFst 
+                    |> Seq.mapSnd (Seq.choose id) 
+                    |> List.ofSeq
+
     Assert.AreEqual(2, records.Length)
     Assert.AreEqual(5, (fst records.[0]).id)
     Assert.AreEqual(6, (fst records.[1]).id)
