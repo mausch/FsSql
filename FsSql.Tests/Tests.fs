@@ -470,7 +470,7 @@ let ``left join``() =
                     |> Sql.map asPersonWithAddresses 
                     |> Seq.cache 
                     |> Seq.groupByFst 
-                    |> Seq.mapSnd (Seq.choose id) 
+                    |> Seq.chooseSnd
                     |> List.ofSeq
 
     Assert.AreEqual(2, records.Length)
