@@ -41,6 +41,8 @@
     <Reference Include="System.Transactions" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FSharpTypeExtensions.fs" />
+    <Compile Include="FSharpValueExtensions.fs" />
     <Compile Include="prelude.fs" />
     <Compile Include="OptionExtensions.fs" />
     <Compile Include="DictDataRecord.fs" />

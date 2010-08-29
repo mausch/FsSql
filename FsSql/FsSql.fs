@@ -135,7 +135,7 @@ let addParameter (cmd: #IDbCommand) (p: Parameter) =
     par.Value <- 
         match p.Value with
         | null -> box DBNull.Value
-        | OptionType -> optionToDBNull p.Value
+        | FSharpValue.OptionType -> optionToDBNull p.Value
         | x -> x
     cmd.Parameters.Add par |> ignore
     cmd
@@ -273,8 +273,8 @@ let mapOne mapper datareader =
     |> Enumerable.Single
 
 let asNameValue (r: IDataRecord) =
-    let names = seq {0..r.FieldCount-1} |> Seq.map r.GetName
-    let values = seq {0..r.FieldCount-1} |> Seq.map r.GetValue
+    let names = {0..r.FieldCount-1} |> Seq.map r.GetName
+    let values = {0..r.FieldCount-1} |> Seq.map r.GetValue
     Seq.zip names values
 
 let asMap r = r |> asNameValue |> Map.ofSeq
