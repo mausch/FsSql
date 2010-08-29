@@ -13,9 +13,9 @@ type internal DataReaderWrapper(dr: IDataReader, dispose: unit -> unit) =
             dispose()
         member x.GetBoolean i = dr.GetBoolean i
         member x.GetByte i = dr.GetByte i
-        member x.GetBytes(i, fieldOffset, buffer, bufferoffset, lenght) = dr.GetBytes(i, fieldOffset, buffer, bufferoffset, lenght)
+        member x.GetBytes(i, fieldOffset, buffer, bufferoffset, length) = dr.GetBytes(i, fieldOffset, buffer, bufferoffset, length)
         member x.GetChar i = dr.GetChar i
-        member x.GetChars(i, fieldOffset, buffer, bufferoffset, lenght) = dr.GetChars(i, fieldOffset, buffer, bufferoffset, lenght)
+        member x.GetChars(i, fieldOffset, buffer, bufferoffset, length) = dr.GetChars(i, fieldOffset, buffer, bufferoffset, length)
         member x.GetData i = dr.GetData i
         member x.GetDataTypeName i = dr.GetDataTypeName i
         member x.GetDateTime i = dr.GetDateTime i
