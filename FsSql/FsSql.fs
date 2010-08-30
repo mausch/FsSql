@@ -294,6 +294,11 @@ let optionalBy fieldName mapper r =
 let recordFields t = 
     FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
 
+/// Gets all field values from a record
+let recordValues o = 
+    FSharpType.GetRecordFields (o.GetType()) 
+    |> Seq.map (fun f -> f.GetValue(o, null))
+
 let internal fieldAlias alias = 
     Array.map (fun s -> sprintf "%s.%s %s_%s" alias s alias s)
 
