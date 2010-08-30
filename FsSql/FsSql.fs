@@ -11,7 +11,7 @@ open FsSqlImpl
 open FsSqlPrelude
 
 /// Encapsulates how to create and dispose a database connection
-type ConnectionManager = (unit -> IDbConnection) * (IDbConnection -> unit)
+type ConnectionManager = (unit -> IDbConnection) * (IDbConnection -> unit) * (IDbTransaction option)
 
 /// Creates a <see cref="ConnectionManager"/> with an externally-owned connection
 let withConnection (conn: IDbConnection) : ConnectionManager =
@@ -20,7 +20,15 @@ let withConnection (conn: IDbConnection) : ConnectionManager =
         logf "creating connection from const %s" id
         conn
     let dispose c = logf "disposing connection (but not really) %s" id
-    create,dispose
+    create,dispose,None
+
+let withTransaction (tx: IDbTransaction): ConnectionManager =
+    let id = Guid.NewGuid().ToString()
+    let create() = 
+        logf "creating connection from const %s" id
+        tx.Connection
+    let dispose c = logf "disposing connection (but not really) %s" id
+    create,dispose,Some tx
 
 /// Creates a <see cref="ConnectionManager"/> with an owned connection
 let withNewConnection (create: unit -> IDbConnection) : ConnectionManager = 
@@ -31,14 +39,14 @@ let withNewConnection (create: unit -> IDbConnection) : ConnectionManager =
     let dispose (c: IDisposable) = 
         c.Dispose()
         logf "disposing connection %s" id
-    create,dispose
+    create,dispose,None
 
 let internal withCreateConnection (create: unit -> IDbConnection) : ConnectionManager = 
     let dispose x = ()
-    create,dispose
+    create,dispose,None
 
 let internal doWithConnection (cmgr: ConnectionManager) f =
-    let create,dispose = cmgr
+    let create,dispose,_ = cmgr
     withResource create dispose f
     
 let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
@@ -96,7 +104,7 @@ let internal sqlProcessor (cmgr: ConnectionManager) (withCmd: IDbCommand -> IDbC
     doWithConnection cmgr sqlProcessor'
 
 let internal sqlProcessorToDataReader (cmgr: ConnectionManager) b = 
-    let create,dispose = cmgr
+    let create,dispose,_ = cmgr
     let exec (cmd: IDbCommand) (conn: IDbConnection) = 
         let dispose() = dispose conn
         new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
@@ -140,9 +148,13 @@ let addParameter (cmd: #IDbCommand) (p: Parameter) =
     cmd.Parameters.Add par |> ignore
     cmd
 
-let internal prepareCommand (connection: #IDbConnection) (sql: string) (cmdType: CommandType) (parameters: #seq<Parameter>) =
+let internal prepareCommand (connection: #IDbConnection) (tx: IDbTransaction option) (sql: string) (cmdType: CommandType) (parameters: #seq<Parameter>) =
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
+    cmd.Transaction <- 
+        match tx with
+        | None -> null
+        | Some t -> t
     cmd.CommandType <- cmdType
     parameters |> Seq.iter (addParameter cmd >> ignore)
     cmd
@@ -159,9 +171,9 @@ let paramsFromDict (p: #IDictionary<string, obj>) =
 
 /// Executes and returns a data reader
 let internal execReaderInternal cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
-    let create,dispose = cmgr
+    let create,dispose,tx = cmgr
     let connection = create()
-    use cmd = prepareCommand connection sql cmdType parameters
+    use cmd = prepareCommand connection tx sql cmdType parameters
     let dispose() = dispose connection
     new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
 
@@ -174,7 +186,8 @@ let execSPReader connMgr = execReaderInternal CommandType.StoredProcedure connMg
 /// Executes and returns the number of rows affected
 let internal execNonQueryInternal cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let execNonQuery' connection = 
-        use cmd = prepareCommand connection sql cmdType parameters
+        let _,_,tx = cmgr
+        use cmd = prepareCommand connection tx sql cmdType parameters
         cmd.ExecuteNonQuery()
     doWithConnection cmgr execNonQuery'
 
@@ -191,7 +204,7 @@ let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionMana
         use tx = conn.BeginTransaction(isolation)
         logf "started tx %s" id
         try
-            let r = f (withConnection conn)
+            let r = f (withTransaction tx)
             tx.Commit()
             logf "committed tx %s" id
             r
