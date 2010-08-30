@@ -93,6 +93,11 @@ let internal sqlProcessor (cmgr: ConnectionManager) (withCmd: IDbCommand -> IDbC
     let sqlProcessor' (conn: IDbConnection) = 
         use cmd = conn.CreateCommand()
         cmd.CommandText <- sql
+        let _,_,tx = cmgr
+        cmd.Transaction <- 
+            match tx with
+            | None -> null
+            | Some t -> t
         let createParam i (p: obj) =
             let param = cmd.CreateParameter()
             //param.DbType <- DbType.
