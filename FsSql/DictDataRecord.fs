@@ -14,7 +14,7 @@ type internal Entry = {
 
 type internal DictDataRecord(dr: IDataRecord) =
     let dic = 
-        let x = OrderedDictionary()
+        let x = OrderedDictionary(StringComparer.InvariantCultureIgnoreCase)
         for i in [0..dr.FieldCount-1] do
             let name = dr.GetName i
             let entry = {
