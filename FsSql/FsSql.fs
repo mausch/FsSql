@@ -246,8 +246,12 @@ let isNull a = DBNull.Value.Equals a
 
 /// Reads a field from a <see cref="IDataRecord"/>, returns None if null, otherwise Some x
 let readField (field: string) (record: #IDataRecord) : 'a option =
-    let o = record.[field]
-    Option.fromDBNull o
+    try
+        let o = record.[field]
+        Option.fromDBNull o
+    with e ->
+        let msg = sprintf "Error reading field %s" field
+        raise <| Exception(msg, e)
 
 /// Reads an integer field from a <see cref="IDataRecord"/>, returns None if null, otherwise Some x
 let readInt : string -> #IDataRecord -> int option = readField 

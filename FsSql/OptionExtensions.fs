@@ -3,10 +3,14 @@
 open System
 
 /// Maps DBNull to None, otherwise Some x
-let fromDBNull (o: obj) =
-    if DBNull.Value.Equals o
-        then None
-        else Some (unbox o)
+let fromDBNull (o: obj): 'a option =
+    try 
+        if o = null || DBNull.Value.Equals o
+            then None
+            else Some (unbox o)
+    with :? InvalidCastException as e ->
+        let msg = sprintf "Can't cast '%s' to '%s'" (o.GetType().Name) (typeof<'a>.Name)
+        raise <| InvalidCastException(msg, e)
 
 /// Maps None to DBNull, otherwise the option's value
 let toDBNull =
