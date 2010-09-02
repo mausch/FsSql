@@ -178,8 +178,10 @@ let paramsFromDict (p: #IDictionary<string, obj>) =
 let internal execReaderInternal cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let create,dispose,tx = cmgr
     let connection = create()
-    use cmd = prepareCommand connection tx sql cmdType parameters
-    let dispose() = dispose connection
+    let cmd = prepareCommand connection tx sql cmdType parameters
+    let dispose() = 
+        cmd.Dispose()
+        dispose connection
     new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
 
 /// Executes a query and returns a data reader
