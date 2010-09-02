@@ -30,6 +30,7 @@ let ofDataReader (dr: #IDataReader) =
 let mapSnd f = Seq.map (fun (a,b) -> a,f b)
 
 let mapSndMap f = mapSnd (Seq.map f)
+let mapSndFilter f = mapSnd (Seq.filter f)
 
 /// Returns the elements x in snd which are Some(x)
 let chooseSnd s = mapSnd (Seq.choose id) s
