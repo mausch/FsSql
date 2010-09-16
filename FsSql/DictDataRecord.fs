@@ -72,7 +72,13 @@ type internal DictDataRecord(dr: IDataRecord) =
         member x.GetOrdinal name = (dic.[name] :?> Entry).index
         member x.GetString i = getValueOrDefault i
         member x.GetValue i = getValueOrDefault i
-        member x.GetValues values = raise <| NotImplementedException()
+        member x.GetValues values = 
+            if values = null
+                then nullArg "values"
+            let count = min values.Length dic.Count
+            for i in 0..count-1 do
+                values.[i] <- getValueOrDefault i
+            count
         member x.IsDBNull i = (getValueOrDefault i) = DBNull.Value
         member x.FieldCount with get() = dic.Count
         member x.Item 
