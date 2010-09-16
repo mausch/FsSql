@@ -22,3 +22,9 @@ module FSharpType =
     /// Creates an option type
     let MakeOptionType (t: Type) =
         typedefof<option<_>>.MakeGenericType [| t |]
+
+    let tryGetMethod (name: string) (types: Type[]) (t: Type) = 
+        let m = t.GetMethod(name, types)
+        if m = null
+            then None
+            else Some m

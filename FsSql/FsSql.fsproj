@@ -45,15 +45,15 @@
     <Compile Include="FSharpTypeExtensions.fs" />
     <Compile Include="FSharpValueExtensions.fs" />
     <Compile Include="prelude.fs" />
+    <Compile Include="AsyncExtensions.fs" />
     <Compile Include="OptionExtensions.fs" />
+    <Compile Include="DbCommandWrapper.fs" />
     <Compile Include="DictDataRecord.fs" />
     <Compile Include="DataReaderWrapper.fs" />
-    <Compile Include="DbCommandWrapper.fs" />
     <Compile Include="SeqExtensions.fs" />
     <Compile Include="ListExtensions.fs" />
     <Compile Include="FsSql.fs" />
     <Compile Include="FsSqlOperators.fs" />
-    <Compile Include="AsyncExtensions.fs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\FSharp\1.0\Microsoft.FSharp.Targets" Condition="!Exists('$(MSBuildBinPath)\Microsoft.Build.Tasks.v4.0.dll')" />
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft F#\v4.0\Microsoft.FSharp.Targets" Condition=" Exists('$(MSBuildBinPath)\Microsoft.Build.Tasks.v4.0.dll')" />

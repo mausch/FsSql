@@ -9,6 +9,7 @@ open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
 open FsSqlImpl
 open FsSqlPrelude
+open FsSql.AsyncExtensions
 
 /// Encapsulates how to create and dispose a database connection
 type ConnectionManager = (unit -> IDbConnection) * (IDbConnection -> unit) * (IDbTransaction option)
@@ -185,20 +186,63 @@ let paramsFromDict (p: #IDictionary<string, obj>) =
     p |> Seq.map (|KeyValue|) |> parameters
 
 /// Executes and returns a data reader
-let internal execReaderInternal cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
+let internal execReaderInternal (exec: IDbCommand -> (unit -> unit) -> 'a) cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let create,dispose,tx = cmgr
     let connection = create()
     let cmd = prepareCommand connection tx sql cmdType parameters
     let dispose() = 
         cmd.Dispose()
         dispose connection
+    exec cmd dispose
+
+let internal execReaderWrap (cmd: #IDbCommand) dispose = 
     new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
 
+type AsyncOps = {
+    execNonQuery: IDbCommand -> int Async
+    execReader: IDbCommand -> IDataReader Async
+}
+
+let AsyncOpsRegistry = Dictionary<Type, AsyncOps>()
+
+let SqlClientAsyncOps = {
+    execNonQuery = fun cmd -> asyncExecNonQuery (cmd :?> SqlCommand)
+    execReader = fun cmd -> 
+                    async {
+                        let! r = asyncExecReader (cmd :?> SqlCommand)
+                        return upcast r
+                    }
+}
+
+let FakeAsyncOps = {
+    execNonQuery = fun cmd -> 
+                    let e = Func<_>(cmd.ExecuteNonQuery)
+                    Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel)
+    execReader = fun cmd ->
+                    let e = Func<_>(cmd.ExecuteReader)
+                    Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel)
+}
+
+AsyncOpsRegistry.Add(typeof<SqlCommand>, SqlClientAsyncOps)
+
+let internal execReaderAsyncWrap (cmd: #IDbCommand) dispose = 
+    let execReader = 
+        match AsyncOpsRegistry.TryGetValue (cmd.GetType()) with
+        | false,_ -> FakeAsyncOps.execReader
+        | true,m -> m.execReader
+    async {
+        let! r = execReader cmd
+        return new DataReaderWrapper(r, dispose) :> IDataReader
+    }
+
 /// Executes a query and returns a data reader
-let execReader connMgr = execReaderInternal CommandType.Text connMgr
+let execReader connMgr = execReaderInternal execReaderWrap CommandType.Text connMgr
 
 /// Executes a stored procedure and returns a data reader
-let execSPReader connMgr = execReaderInternal CommandType.StoredProcedure connMgr
+let execSPReader connMgr = execReaderInternal execReaderWrap CommandType.StoredProcedure connMgr
+
+/// Executes a query and returns a data reader
+let asyncExecReader connMgr = execReaderInternal execReaderAsyncWrap CommandType.Text connMgr
 
 /// Executes and returns the number of rows affected
 let internal execNonQueryInternal cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
