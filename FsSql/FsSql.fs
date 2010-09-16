@@ -9,7 +9,7 @@ open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
 open FsSqlImpl
 open FsSqlPrelude
-open FsSql.AsyncExtensions
+open FsSql.Async
 
 /// Encapsulates how to create and dispose a database connection
 type ConnectionManager = (unit -> IDbConnection) * (IDbConnection -> unit) * (IDbTransaction option)
