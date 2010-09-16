@@ -198,30 +198,29 @@ let internal execReaderInternal (exec: IDbCommand -> (unit -> unit) -> 'a) cmdTy
 let internal execReaderWrap (cmd: #IDbCommand) dispose = 
     new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
 
-type AsyncOps = {
-    execNonQuery: IDbCommand -> int Async
-    execReader: IDbCommand -> IDataReader Async
-}
+type IAsyncOps = 
+    abstract execNonQuery: IDbCommand -> int Async
+    abstract execReader: IDbCommand -> IDataReader Async
 
-let AsyncOpsRegistry = Dictionary<Type, AsyncOps>()
+let AsyncOpsRegistry = Dictionary<Type, IAsyncOps>()
 
-let SqlClientAsyncOps = {
-    execNonQuery = fun cmd -> asyncExecNonQuery (cmd :?> SqlCommand)
-    execReader = fun cmd -> 
+let SqlClientAsyncOps = 
+    { new IAsyncOps with
+        member x.execNonQuery cmd = asyncExecNonQuery (cmd :?> SqlCommand)
+        member x.execReader cmd = 
                     async {
                         let! r = asyncExecReader (cmd :?> SqlCommand)
                         return upcast r
-                    }
-}
+                    } }
 
-let FakeAsyncOps = {
-    execNonQuery = fun cmd -> 
-                    let e = Func<_>(cmd.ExecuteNonQuery)
-                    Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel)
-    execReader = fun cmd ->
-                    let e = Func<_>(cmd.ExecuteReader)
-                    Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel)
-}
+let FakeAsyncOps = 
+    { new IAsyncOps with
+        member x.execNonQuery cmd = 
+            let e = Func<_>(cmd.ExecuteNonQuery)
+            Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel)
+        member x.execReader cmd = 
+            let e = Func<_>(cmd.ExecuteReader)
+            Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel) }
 
 AsyncOpsRegistry.Add(typeof<SqlCommand>, SqlClientAsyncOps)
 
