@@ -198,39 +198,10 @@ let internal execReaderInternal (exec: IDbCommand -> (unit -> unit) -> 'a) cmdTy
 let internal execReaderWrap (cmd: #IDbCommand) dispose = 
     new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
 
-type IAsyncOps = 
-    abstract execNonQuery: IDbCommand -> int Async
-    abstract execReader: IDbCommand -> IDataReader Async
-
-let AsyncOpsRegistry = Dictionary<Type, IAsyncOps>()
-
-let SqlClientAsyncOps = 
-    { new IAsyncOps with
-        member x.execNonQuery cmd = asyncExecNonQuery (cmd :?> SqlCommand)
-        member x.execReader cmd = 
-                    async {
-                        let! r = asyncExecReader (cmd :?> SqlCommand)
-                        return upcast r
-                    } }
-
-let FakeAsyncOps = 
-    { new IAsyncOps with
-        member x.execNonQuery cmd = 
-            let e = Func<_>(cmd.ExecuteNonQuery)
-            Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel)
-        member x.execReader cmd = 
-            let e = Func<_>(cmd.ExecuteReader)
-            Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel) }
-
-AsyncOpsRegistry.Add(typeof<SqlCommand>, SqlClientAsyncOps)
-
 let internal execReaderAsyncWrap (cmd: #IDbCommand) dispose = 
-    let execReader = 
-        match AsyncOpsRegistry.TryGetValue (cmd.GetType()) with
-        | false,_ -> FakeAsyncOps.execReader
-        | true,m -> m.execReader
+    let ops = getAsyncOpsForCommand cmd
     async {
-        let! r = execReader cmd
+        let! r = ops.execReader cmd
         return new DataReaderWrapper(r, dispose) :> IDataReader
     }
 
@@ -263,11 +234,8 @@ let execNonQuery connMgr = execNonQueryInternal execNonQueryExec CommandType.Tex
 let execSPNonQuery connMgr = execNonQueryInternal execNonQueryExec CommandType.StoredProcedure connMgr
 
 let internal execNonQueryAsync (cmd: #IDbCommand) = 
-    let execNonQuery = 
-        match AsyncOpsRegistry.TryGetValue (cmd.GetType()) with
-        | false,_ -> FakeAsyncOps.execNonQuery
-        | true,m -> m.execNonQuery
-    execNonQuery cmd
+    let ops = getAsyncOpsForCommand cmd
+    ops.execNonQuery cmd
 
 /// Executes a SQL statement asynchronously and returns the number of rows affected
 let asyncExecNonQuery connMgr = execNonQueryInternal execNonQueryAsync CommandType.Text connMgr

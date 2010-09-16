@@ -1,6 +1,7 @@
 ﻿module FsSql.AsyncExtensions
 
 open System
+open System.Collections.Generic
 open System.Data
 open System.Data.SqlClient
 open System.Xml
@@ -42,3 +43,34 @@ let inline asyncExecXmlReader cmd =
     let acancel () = (^a: (member Cancel: unit -> unit) (cmd))
     Async.FromBeginEnd(abegin, aend, acancel)
     
+type IAsyncOps = 
+    abstract execNonQuery: IDbCommand -> int Async
+    abstract execReader: IDbCommand -> IDataReader Async
+
+let AsyncOpsRegistry = Dictionary<Type, IAsyncOps>()
+
+let SqlClientAsyncOps = 
+    { new IAsyncOps with
+        member x.execNonQuery cmd = asyncExecNonQuery (cmd :?> SqlCommand)
+        member x.execReader cmd = 
+                    async {
+                        let! r = asyncExecReader (cmd :?> SqlCommand)
+                        return upcast r
+                    } }
+
+let FakeAsyncOps = 
+    { new IAsyncOps with
+        member x.execNonQuery cmd = 
+            let e = Func<_>(cmd.ExecuteNonQuery)
+            Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel)
+        member x.execReader cmd = 
+            let e = Func<_>(cmd.ExecuteReader)
+            Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel) }
+
+AsyncOpsRegistry.Add(typeof<SqlCommand>, SqlClientAsyncOps)
+
+let getAsyncOpsForCommand (cmd: #IDbCommand) = 
+    match AsyncOpsRegistry.TryGetValue (cmd.GetType()) with
+    | false,_ -> FakeAsyncOps
+    | true,m -> m
+
