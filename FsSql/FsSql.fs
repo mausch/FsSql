@@ -240,22 +240,40 @@ let execReader connMgr = execReaderInternal execReaderWrap CommandType.Text conn
 /// Executes a stored procedure and returns a data reader
 let execSPReader connMgr = execReaderInternal execReaderWrap CommandType.StoredProcedure connMgr
 
-/// Executes a query and returns a data reader
+/// Executes a query asynchronously and returns a data reader
 let asyncExecReader connMgr = execReaderInternal execReaderAsyncWrap CommandType.Text connMgr
 
+/// Executes a stored procedure asynchronously and returns a data reader
+let asyncExecSPReader connMgr = execReaderInternal execReaderAsyncWrap CommandType.StoredProcedure connMgr
+
 /// Executes and returns the number of rows affected
-let internal execNonQueryInternal cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
+let internal execNonQueryInternal (exec: IDbCommand -> 'a) cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let execNonQuery' connection = 
         let _,_,tx = cmgr
         use cmd = prepareCommand connection tx sql cmdType parameters
-        cmd.ExecuteNonQuery()
+        exec cmd
     doWithConnection cmgr execNonQuery'
 
+let internal execNonQueryExec (cmd: #IDbCommand) = cmd.ExecuteNonQuery()
+
 /// Executes a SQL statement and returns the number of rows affected
-let execNonQuery connMgr = execNonQueryInternal CommandType.Text connMgr
+let execNonQuery connMgr = execNonQueryInternal execNonQueryExec CommandType.Text connMgr
 
 /// Executes a stored procedure and returns the number of rows affected
-let execSPNonQuery connMgr = execNonQueryInternal CommandType.StoredProcedure connMgr
+let execSPNonQuery connMgr = execNonQueryInternal execNonQueryExec CommandType.StoredProcedure connMgr
+
+let internal execNonQueryAsync (cmd: #IDbCommand) = 
+    let execNonQuery = 
+        match AsyncOpsRegistry.TryGetValue (cmd.GetType()) with
+        | false,_ -> FakeAsyncOps.execNonQuery
+        | true,m -> m.execNonQuery
+    execNonQuery cmd
+
+/// Executes a SQL statement asynchronously and returns the number of rows affected
+let asyncExecNonQuery connMgr = execNonQueryInternal execNonQueryAsync CommandType.Text connMgr
+
+/// Executes a stored procedure asynchronously and returns the number of rows affected
+let asyncExecSPNonQuery connMgr = execNonQueryInternal execNonQueryAsync CommandType.StoredProcedure connMgr
 
 /// Wraps a function in a transaction with the specified <see cref="IsolationLevel"/>
 let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionManager) f =
@@ -328,6 +346,20 @@ let execScalar a b c =
 /// Executes the stored procedure, and returns the first column of the first row in the resultset returned by the query. Extra columns or rows are ignored.
 let execSPScalar a b c =
     execSPReader a b c |> mapScalar
+
+/// Executes the query asynchronously, and returns the first column of the first row in the resultset returned by the query. Extra columns or rows are ignored.
+let asyncExecScalar a b c =
+    async {
+        use! reader = asyncExecReader a b c
+        return reader |> mapScalar
+    }
+
+/// Executes the stored procedure asynchronously, and returns the first column of the first row in the resultset returned by the query. Extra columns or rows are ignored.
+let asyncExecSPScalar a b c =
+    async {
+        use! reader = asyncExecSPReader a b c
+        return reader |> mapScalar
+    }
 
 /// Maps a datareader
 let map mapper datareader =
