@@ -406,6 +406,15 @@ let ``datareader with lazylist persistent`` () =
     dataReaderWithLazyList (withNewDbFile())
 
 [<Test>]
+let ``create command`` () = 
+    let cmgr = withNewDbFile()
+    use cmd = Sql.createCommand cmgr
+    cmd.CommandText <- "select * from person where id < @id"
+    [Sql.Parameter.make("@id", 0)] |> Seq.iter (Sql.addParameter cmd)
+    let r = cmd.ExecuteReader() |> List.ofDataReader
+    Assert.AreEqual(0, r.Length)
+
+[<Test>]
 let ``duplicate field names are NOT supported``() =
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore

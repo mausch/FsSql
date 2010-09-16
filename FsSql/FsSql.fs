@@ -151,7 +151,17 @@ let addParameter (cmd: #IDbCommand) (p: Parameter) =
         | FSharpValue.OptionType -> optionToDBNull p.Value
         | x -> x
     cmd.Parameters.Add par |> ignore
-    cmd
+
+let createCommand (cmgr: ConnectionManager) = 
+    let create,dispose,tx = cmgr
+    let conn = create()
+    let cmd = conn.CreateCommand()
+    cmd.Transaction <- 
+        match tx with
+        | None -> null
+        | Some t -> t
+    let dispose () = dispose conn
+    new DbCommandWrapper(cmd, dispose) :> IDbCommand
 
 let internal prepareCommand (connection: #IDbConnection) (tx: IDbTransaction option) (sql: string) (cmdType: CommandType) (parameters: #seq<Parameter>) =
     let cmd = connection.CreateCommand()
@@ -161,7 +171,7 @@ let internal prepareCommand (connection: #IDbConnection) (tx: IDbTransaction opt
         | None -> null
         | Some t -> t
     cmd.CommandType <- cmdType
-    parameters |> Seq.iter (addParameter cmd >> ignore)
+    parameters |> Seq.iter (addParameter cmd)
     cmd
 
 let internal inferParameterDbType (p: string * obj) = 
