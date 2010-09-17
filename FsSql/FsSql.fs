@@ -385,23 +385,19 @@ let asRecord<'a> (prefix: string) =
         if String.IsNullOrWhiteSpace prefix
             then n
             else sprintf "%s_%s" prefix n
-    let fieldNamesWithPrefix = fieldNames |> Seq.map addPrefix |> Seq.toArray
+    let fieldNamesWithPrefix = fieldNames |> Array.map addPrefix
     let findIndex item = Array.findIndex ((=) item)
-    let comparer (a: string, _) (x: string, _) =
-        let i = fieldNames |> findIndex a
-        let j = fieldNames |> findIndex x
+    let comparer (a: string, _) (b: string, _) =
+        let i = fieldNamesWithPrefix |> findIndex a
+        let j = fieldNamesWithPrefix |> findIndex b
         compare i j
     let setOptionTypes ((_, y: obj), p: PropertyInfo) = 
         if FSharpType.IsOption p.PropertyType
             then box (Option.fromDBNull y)
             else y
-    let removePrefix (name: string, v) = 
-        match prefixRx with
-        | None -> name,v
-        | Some p -> p.Replace(name,""),v
     let inRecord (name: string, v) = fieldNamesWithPrefix.Contains name
     fun (r: IDataRecord) ->
-        let values = r |> asNameValue |> Seq.filter inRecord |> Seq.map removePrefix |> Array.ofSeq
+        let values = r |> asNameValue |> Seq.filter inRecord |> Array.ofSeq
         values |> Array.sortInPlaceWith comparer
         let values = Seq.zip values fields
                         |> Seq.map setOptionTypes
