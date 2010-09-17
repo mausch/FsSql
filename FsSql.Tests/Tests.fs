@@ -7,6 +7,7 @@ open System.Data
 open System.Data.SQLite
 open System.IO
 open System.Linq
+open System.Reflection
 open FsSqlPrelude
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Reflection
@@ -507,3 +508,51 @@ let ``list of map`` ()=
     Assert.AreEqual("id", keys.[0])
     Assert.AreEqual("name", keys.[1])
     Assert.AreEqual("parent", keys.[2])
+
+[<Test>]
+let ``map asRecord`` () = 
+    let c = withNewDbFile()
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    let p = Sql.execReader c "select id,name,parent from person where id = 5" [] |> Sql.map (Sql.asRecord<Person> "") |> Enumerable.First
+    Assert.AreEqual(5, p.id)
+    Assert.AreEqual("John", p.name)
+    Assert.AreEqual(None, p.parent)
+
+[<Test>]
+let ``map asRecord with different field order`` () = 
+    let c = withNewDbFile()
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    let p = Sql.execReader c "select name,id,parent from person where id = 5" [] |> Sql.map (Sql.asRecord<Person> "") |> Enumerable.First
+    Assert.AreEqual(5, p.id)
+    Assert.AreEqual("John", p.name)
+    Assert.AreEqual(None, p.parent)
+
+[<Test>]
+let ``map asRecord with too few fields throws`` () =
+    let c = withNewDbFile()
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    use reader = Sql.execReader c "select name,id from person where id = 5" []
+    let proc () = reader |> Sql.map (Sql.asRecord<Person> "") |> Enumerable.First |> ignore
+    assertThrows<TargetParameterCountException> proc
+
+[<Test>]
+let ``map asRecord with prefix`` () = 
+    let c = withNewDbFile()
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    let sql = sprintf "select %s from Person p where id = 5" (Sql.recordFieldsAlias typeof<Person> "p")
+    let p = Sql.execReader c sql [] |> Sql.map (Sql.asRecord<Person> "p") |> Enumerable.First
+    Assert.AreEqual(5, p.id)
+    Assert.AreEqual("John", p.name)
+    Assert.AreEqual(None, p.parent)
+
+[<Test>]
+let ``map asRecord with prefix with more fields`` () = 
+    let c = withNewDbFile()
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    Sql.execNonQueryF c "insert into address (id, person, street, city) values (%d, %d, %s, %s)" 2 5 "Fake st" "NY" |> ignore
+    let sql = sprintf "select %s, a.* from Person p, address a where p.id = 5" (Sql.recordFieldsAlias typeof<Person> "p")
+    let p = Sql.execReader c sql [] |> Sql.map (Sql.asRecord<Person> "p") |> Enumerable.First
+    Assert.AreEqual(5, p.id)
+    Assert.AreEqual("John", p.name)
+    Assert.AreEqual(None, p.parent)
+        

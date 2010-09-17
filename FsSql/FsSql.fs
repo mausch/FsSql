@@ -5,6 +5,7 @@ open System.Collections.Generic
 open System.Data
 open System.Data.SqlClient
 open System.Linq
+open System.Reflection
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
 open FsSqlImpl
@@ -370,6 +371,42 @@ let optionalBy fieldName mapper r =
 /// Gets all field names from a record type
 let recordFields t = 
     FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
+
+let asRecord<'a> (prefix: string) = 
+    let createRecord = FSharpValue.PreComputeRecordConstructor(typeof<'a>)
+    let prefixRx = 
+        if String.IsNullOrWhiteSpace prefix
+            then None
+            else Some (Regex("^" + prefix + "_", RegexOptions.IgnoreCase ||| RegexOptions.Compiled))
+    let make values = (createRecord values) :?> 'a
+    let fields = FSharpType.GetRecordFields typeof<'a>
+    let fieldNames = fields |> Array.map (fun p -> p.Name)
+    let addPrefix n = 
+        if String.IsNullOrWhiteSpace prefix
+            then n
+            else sprintf "%s_%s" prefix n
+    let fieldNamesWithPrefix = fieldNames |> Seq.map addPrefix |> Seq.toArray
+    let findIndex item = Array.findIndex ((=) item)
+    let comparer (a: string, _) (x: string, _) =
+        let i = fieldNames |> findIndex a
+        let j = fieldNames |> findIndex x
+        compare i j
+    let setOptionTypes ((_, y: obj), p: PropertyInfo) = 
+        if FSharpType.IsOption p.PropertyType
+            then box (Option.fromDBNull y)
+            else y
+    let removePrefix (name: string, v) = 
+        match prefixRx with
+        | None -> name,v
+        | Some p -> p.Replace(name,""),v
+    let inRecord (name: string, v) = fieldNamesWithPrefix.Contains name
+    fun (r: IDataRecord) ->
+        let values = r |> asNameValue |> Seq.filter inRecord |> Seq.map removePrefix |> Array.ofSeq
+        values |> Array.sortInPlaceWith comparer
+        let values = Seq.zip values fields
+                        |> Seq.map setOptionTypes
+                        |> Seq.toArray
+        make values
 
 /// Gets all field values from a record
 let recordValues o = 
