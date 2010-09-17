@@ -372,37 +372,38 @@ let optionalBy fieldName mapper r =
 let recordFields t = 
     FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
 
-let asRecord<'a> (prefix: string) = 
+let asRecord<'a> = 
     let createRecord = FSharpValue.PreComputeRecordConstructor(typeof<'a>)
-    let prefixRx = 
-        if String.IsNullOrWhiteSpace prefix
-            then None
-            else Some (Regex("^" + prefix + "_", RegexOptions.IgnoreCase ||| RegexOptions.Compiled))
     let make values = (createRecord values) :?> 'a
     let fields = FSharpType.GetRecordFields typeof<'a>
     let fieldNames = fields |> Array.map (fun p -> p.Name)
-    let addPrefix n = 
-        if String.IsNullOrWhiteSpace prefix
-            then n
-            else sprintf "%s_%s" prefix n
-    let fieldNamesWithPrefix = fieldNames |> Array.map addPrefix
     let findIndex item = Array.findIndex ((=) item)
-    let comparer (a: string, _) (b: string, _) =
-        let i = fieldNamesWithPrefix |> findIndex a
-        let j = fieldNamesWithPrefix |> findIndex b
-        compare i j
     let setOptionTypes ((_, y: obj), p: PropertyInfo) = 
         if FSharpType.IsOption p.PropertyType
             then box (Option.fromDBNull y)
             else y
-    let inRecord (name: string, v) = fieldNamesWithPrefix.Contains name
-    fun (r: IDataRecord) ->
-        let values = r |> asNameValue |> Seq.filter inRecord |> Array.ofSeq
-        values |> Array.sortInPlaceWith comparer
-        let values = Seq.zip values fields
-                        |> Seq.map setOptionTypes
-                        |> Seq.toArray
-        make values
+    fun (prefix: string) ->
+        let prefixRx = 
+            if String.IsNullOrWhiteSpace prefix
+                then None
+                else Some (Regex("^" + prefix + "_", RegexOptions.IgnoreCase ||| RegexOptions.Compiled))
+        let addPrefix n = 
+            if String.IsNullOrWhiteSpace prefix
+                then n
+                else sprintf "%s_%s" prefix n
+        let fieldNamesWithPrefix = fieldNames |> Array.map addPrefix
+        let comparer (a: string, _) (b: string, _) =
+            let i = fieldNamesWithPrefix |> findIndex a
+            let j = fieldNamesWithPrefix |> findIndex b
+            compare i j
+        let inRecord (name: string, v) = fieldNamesWithPrefix.Contains name
+        fun (r: IDataRecord) ->
+            let values = r |> asNameValue |> Seq.filter inRecord |> Array.ofSeq
+            values |> Array.sortInPlaceWith comparer
+            let values = Seq.zip values fields
+                            |> Seq.map setOptionTypes
+                            |> Seq.toArray
+            make values
 
 /// Gets all field values from a record
 let recordValues o = 

@@ -556,3 +556,8 @@ let ``map asRecord with prefix with more fields`` () =
     Assert.AreEqual("John", p.name)
     Assert.AreEqual(None, p.parent)
         
+[<Test>]
+let ``asRecord throws with non-record type`` () = 
+    assertThrows<ArgumentException>(fun () -> 
+        let kk = Sql.asRecord<string>
+        ())
