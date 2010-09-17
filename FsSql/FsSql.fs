@@ -383,10 +383,6 @@ let asRecord<'a> =
             then box (Option.fromDBNull y)
             else y
     fun (prefix: string) ->
-        let prefixRx = 
-            if String.IsNullOrWhiteSpace prefix
-                then None
-                else Some (Regex("^" + prefix + "_", RegexOptions.IgnoreCase ||| RegexOptions.Compiled))
         let addPrefix n = 
             if String.IsNullOrWhiteSpace prefix
                 then n
