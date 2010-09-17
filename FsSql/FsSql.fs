@@ -24,6 +24,7 @@ let withConnection (conn: IDbConnection) : ConnectionManager =
     let dispose c = logf "disposing connection (but not really) %s" id
     create,dispose,None
 
+/// Creates a <see cref="ConnectionManager"/> with an externally-owned transaction
 let withTransaction (tx: IDbTransaction): ConnectionManager =
     let id = Guid.NewGuid().ToString()
     let create() = 
@@ -154,6 +155,7 @@ let addParameter (cmd: #IDbCommand) (p: Parameter) =
         | x -> x
     cmd.Parameters.Add par |> ignore
 
+/// Creates an IDbCommand
 let createCommand (cmgr: ConnectionManager) = 
     let create,dispose,tx = cmgr
     let conn = create()
@@ -372,6 +374,7 @@ let optionalBy fieldName mapper r =
 let recordFields t = 
     FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
 
+/// Maps a datarecord to a record 'a using an optional prefix for record field names
 let asRecord<'a> = 
     let createRecord = FSharpValue.PreComputeRecordConstructor(typeof<'a>)
     let make values = (createRecord values) :?> 'a
@@ -414,5 +417,7 @@ let internal sjoin (sep: string) (strings: string[]) =
 
 /// Gets all field names from a record type formatted with an alias.
 /// E.g. with a field "id" and alias "a", returns "a.id a_id"
-let recordFieldsAlias ty alias = 
-    recordFields ty |> fieldAlias alias |> sjoin ","
+let recordFieldsAlias ty = 
+    let fields = recordFields ty
+    fun alias ->
+        fields |> fieldAlias alias |> sjoin ","
