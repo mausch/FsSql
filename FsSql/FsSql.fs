@@ -358,7 +358,12 @@ let asNameValue (r: IDataRecord) =
     Seq.zip names values
 
 let asMap r = r |> asNameValue |> Map.ofSeq
-let asDict r = r |> asNameValue |> dict
+let asDict r = 
+    let values = r |> asNameValue
+    let d = Dictionary(StringComparer.InvariantCultureIgnoreCase)
+    for k,v in values do
+        d.Add(k,v)
+    d
 
 /// <summary>
 /// Converts a mapper into an optional mapper. 
@@ -374,13 +379,16 @@ let optionalBy fieldName mapper r =
 let recordFields t = 
     FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
 
+let internal strEq (a: string) (b: string) = 
+    StringComparer.InvariantCultureIgnoreCase.Equals(a, b)
+
 /// Maps a datarecord to a record 'a using an optional prefix for record field names
 let asRecord<'a> = 
     let createRecord = FSharpValue.PreComputeRecordConstructor(typeof<'a>)
     let make values = (createRecord values) :?> 'a
     let fields = FSharpType.GetRecordFields typeof<'a>
     let fieldNames = fields |> Array.map (fun p -> p.Name)
-    let findIndex item = Array.findIndex ((=) item)
+    let findIndex item = Array.findIndex (strEq item)
     let setOptionTypes ((_, y: obj), p: PropertyInfo) = 
         if FSharpType.IsOption p.PropertyType
             then box (Option.fromDBNull y)
@@ -395,7 +403,7 @@ let asRecord<'a> =
             let i = fieldNamesWithPrefix |> findIndex a
             let j = fieldNamesWithPrefix |> findIndex b
             compare i j
-        let inRecord (name: string, v) = fieldNamesWithPrefix.Contains name
+        let inRecord (name: string, v) = fieldNamesWithPrefix |> Array.exists (strEq name)
         fun (r: IDataRecord) ->
             let values = r |> asNameValue |> Seq.filter inRecord |> Array.ofSeq
             values |> Array.sortInPlaceWith comparer
