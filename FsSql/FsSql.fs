@@ -402,7 +402,12 @@ let asRecord<'a> =
             let values = Seq.zip values fields
                             |> Seq.map setOptionTypes
                             |> Seq.toArray
-            make values
+            try
+                make values
+            with :? TargetParameterCountException as e ->
+                let message = sprintf "Parameter count mismatch. %d values provided" values.Length
+                raise <| TargetParameterCountException(message, e)
+
 
 /// Gets all field values from a record
 let recordValues o = 
