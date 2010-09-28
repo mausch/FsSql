@@ -97,10 +97,7 @@ let internal sqlProcessor (cmgr: ConnectionManager) (withCmd: IDbCommand -> IDbC
         use cmd = conn.CreateCommand()
         cmd.CommandText <- sql
         let _,_,tx = cmgr
-        cmd.Transaction <- 
-            match tx with
-            | None -> null
-            | Some t -> t
+        cmd.Transaction <- Option.getOrDefault tx
         let createParam i (p: obj) =
             let param = cmd.CreateParameter()
             //param.DbType <- DbType.
@@ -160,20 +157,14 @@ let createCommand (cmgr: ConnectionManager) =
     let create,dispose,tx = cmgr
     let conn = create()
     let cmd = conn.CreateCommand()
-    cmd.Transaction <- 
-        match tx with
-        | None -> null
-        | Some t -> t
+    cmd.Transaction <- Option.getOrDefault tx
     let dispose () = dispose conn
     new DbCommandWrapper(cmd, dispose) :> IDbCommand
 
 let internal prepareCommand (connection: #IDbConnection) (tx: IDbTransaction option) (sql: string) (cmdType: CommandType) (parameters: #seq<Parameter>) =
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
-    cmd.Transaction <- 
-        match tx with
-        | None -> null
-        | Some t -> t
+    cmd.Transaction <- Option.getOrDefault tx
     cmd.CommandType <- cmdType
     parameters |> Seq.iter (addParameter cmd)
     cmd
