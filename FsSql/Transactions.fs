@@ -4,6 +4,7 @@ open System
 open System.Data
 open Sql
 open FsSqlPrelude
+        
 
 /// Wraps a function in a transaction with the specified <see cref="IsolationLevel"/>
 let transactionalWithIsolation (isolation: IsolationLevel) f =
@@ -25,6 +26,28 @@ let transactionalWithIsolation (isolation: IsolationLevel) f =
 /// Wraps a function in a transaction
 let transactional a = 
     transactionalWithIsolation IsolationLevel.Unspecified a
+
+let mandatory f cmgr =
+    let _,_,tx = cmgr
+    match tx with
+    | Some _ -> f cmgr
+    | None -> failwith "Transaction required!"
+
+let never f cmgr =
+    let _,_,tx = cmgr
+    match tx with
+    | Some _ -> failwith "Transaction present!"
+    | None -> f cmgr
+
+let supported f cmgr = f cmgr
+
+let required f cmgr = 
+    let _,_,tx = cmgr
+    let g = 
+        match tx with
+        | None -> transactional
+        | Some t -> id
+    (g f) cmgr
 
 /// Transaction result
 type TxResult<'a> = Success of 'a | Failure of exn

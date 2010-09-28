@@ -563,3 +563,21 @@ let ``asRecord throws with non-record type`` () =
     assertThrows<ArgumentException>(fun () -> 
         let kk = Sql.asRecord<string>
         ())
+
+[<Test>]
+let ``compose tx`` () = 
+    let c = withNewDbFile()
+    let f1 m = Sql.execNonQueryF m "insert into person (id,name) values (%d, %s)" 3 "one" |> ignore
+    let f1 = Tx.required f1
+    let f2 m = Sql.execNonQueryF m "invalid sql statement" |> ignore
+    let f2 = Tx.required f2
+    let finalTx mgr =
+        f1 mgr
+        f2 mgr
+    try
+        (Tx.required finalTx) c
+        Assert.Fail("Tx should have failed")
+    with e -> 
+        printfn "%s" e.Message
+        let x = Sql.execReaderF c "select count(*) from person" |> Sql.mapScalar
+        Assert.AreEqual(0L, x.Value)
