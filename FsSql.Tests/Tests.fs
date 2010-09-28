@@ -12,6 +12,8 @@ open FsSqlPrelude
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Reflection
 
+let P = Sql.Parameter.make
+
 [<Test>]
 let catchtest() =
     let f a b = a/b
@@ -411,7 +413,7 @@ let ``create command`` () =
     let cmgr = withNewDbFile()
     use cmd = Sql.createCommand cmgr
     cmd.CommandText <- "select * from person where id < @id"
-    [Sql.Parameter.make("@id", 0)] |> Seq.iter (Sql.addParameter cmd)
+    [P("@id", 0)] |> Seq.iter (Sql.addParameter cmd)
     let r = cmd.ExecuteReader() |> List.ofDataReader
     Assert.AreEqual(0, r.Length)
 
@@ -419,7 +421,7 @@ let ``create command`` () =
 let ``async exec reader`` () = 
     let cmgr = withNewDbFile()
     async {
-        use! reader = Sql.asyncExecReader cmgr "select * from person where id < @id" [Sql.Parameter.make("@id", 0)]
+        use! reader = Sql.asyncExecReader cmgr "select * from person where id < @id" [P("@id", 0)]
         let r = reader |> List.ofDataReader
         Assert.AreEqual(0, r.Length)
     } |> Async.RunSynchronously
