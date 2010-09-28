@@ -6,7 +6,7 @@ open Sql
 open FsSqlPrelude
         
 /// Wraps a function in a transaction with the specified <see cref="IsolationLevel"/>
-let transactionalWithIsolation (isolation: IsolationLevel) f =
+let transactionalWithIsolation (isolation: IsolationLevel) f cmgr =
     let transactionalWithIsolation' (conn: IDbConnection) = 
         let id = Guid.NewGuid().ToString()
         use tx = conn.BeginTransaction(isolation)
@@ -20,7 +20,7 @@ let transactionalWithIsolation (isolation: IsolationLevel) f =
             tx.Rollback()
             logf "rolled back tx %s" id
             reraise()
-    fun cmgr -> doWithConnection cmgr transactionalWithIsolation'
+    doWithConnection cmgr transactionalWithIsolation'
 
 /// Wraps a function in a transaction
 let transactional a = 
@@ -53,7 +53,7 @@ let required f cmgr =
     let g = 
         match tx with
         | None -> transactional
-        | Some t -> id
+        | _ -> id
     (g f) cmgr
 
 /// Transaction result
@@ -74,3 +74,19 @@ let transactional2 f (cmgr: ConnectionManager) =
             Failure e
     doWithConnection cmgr transactional2'
 
+type M<'a> = ConnectionManager -> TxResult<'a>
+
+let bind m f cmgr = 
+    try
+        match m cmgr with
+        | Success a -> f a cmgr
+        | x -> x
+    with e -> Failure e
+
+type TransactionBuilder() =
+    member x.Bind(m,f) = bind m f
+    member x.Return a = 
+        fun (cmgr: ConnectionManager) -> Success a
+
+let execNonQuery sql parameters mgr = 
+    Sql.execNonQuery mgr sql parameters |> Success

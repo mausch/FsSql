@@ -580,3 +580,17 @@ let ``compose tx`` () =
     with e -> 
         printfn "%s" e.Message
         Assert.AreEqual(0L, countUsers c)
+
+[<Test>]
+let ``tx monad error`` () = 
+    let c = withNewDbFile()
+    let tx = Tx.TransactionBuilder()
+    let tran = tx {
+        let! x = Tx.execNonQuery "select" []
+        return 1
+    }
+    let result = tran c // execute transaction
+    match result with
+    | Tx.Success a -> Assert.Fail("Transaction should have failed")
+    | Tx.Failure e -> printfn "Error: %A" e
+    ()
