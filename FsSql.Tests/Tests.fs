@@ -242,8 +242,8 @@ let ``nested transactions are NOT supported persistent`` () =
     nestedTransactionsAreNotSupported (withNewDbFile())
 
 let transactionWithOption conn =
-    let someTran = Tx.transactional2 conn someTranAndFail
-    let result = someTran()
+    let someTran = Tx.transactional2 someTranAndFail
+    let result = someTran conn
     match result with
     | Tx.Success v -> raise <| Exception("transaction should have failed!")
     | Tx.Failure e -> printfn "Failed with exception %A" e

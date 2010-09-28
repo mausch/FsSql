@@ -53,7 +53,7 @@ let required f cmgr =
 type TxResult<'a> = Success of 'a | Failure of exn
 
 /// Wraps a function in a transaction, returns a <see cref="TxResult{T}"/>
-let transactional2 (cmgr: ConnectionManager) f =
+let transactional2 f (cmgr: ConnectionManager) =
     let transactional2' (conn: IDbConnection) =
         let tx = conn.BeginTransaction()
         try
@@ -63,5 +63,5 @@ let transactional2 (cmgr: ConnectionManager) f =
         with e ->
             tx.Rollback()
             Failure e
-    fun () -> doWithConnection cmgr transactional2'
+    doWithConnection cmgr transactional2'
 
