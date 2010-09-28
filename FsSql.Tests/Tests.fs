@@ -179,9 +179,9 @@ let someTranAndFail conn =
     ()
 
 let transactionWithException conn =
-    let someTran = Tx.transactional conn someTranAndFail
+    let someTran = Tx.transactional someTranAndFail
     let someTran = catch () someTran
-    someTran()
+    someTran conn
     Assert.AreEqual(0L, countUsers conn)
 
 [<Test;Parallelizable>]
@@ -202,8 +202,8 @@ let someTran conn =
 
 let transactionCommitted conn =
     let someTran conn = someTran conn
-    let someTran = Tx.transactional conn someTran
-    someTran()
+    let someTran = Tx.transactional someTran
+    someTran conn
     Assert.AreEqual(2L, countUsers conn)
 
 [<Test;Parallelizable>]
@@ -221,14 +221,14 @@ let someTranWithSubTran conn =
     let subtran conn = 
         insertUser conn {id = 3; name = "jorge"; parent = None}
         failwith "this fails"
-    (Tx.transactional conn subtran)()
+    (Tx.transactional subtran) conn
     insertUser conn {id = 1; name = "pepe"; parent = None}
     insertUser conn {id = 2; name = "jose"; parent = None}
     ()
 
 let nestedTransactionsAreNotSupported conn =
-    let someTran = Tx.transactional conn someTranWithSubTran
-    assertThrows<SQLiteException> someTran
+    let someTran = Tx.transactional someTranWithSubTran
+    assertThrows<SQLiteException> (fun () -> someTran conn)
 
 [<Test;Parallelizable>]
 let ``nested transactions are NOT supported`` () =
@@ -282,8 +282,8 @@ let insertUsers conn =
         //for i in 100000000..100050000 do
         for i in 1..10 do
             insertUser conn {id = i; name = "pepe" + i.ToString(); parent = None}
-    let insert = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted conn insert
-    insert()
+    let insert = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted insert
+    insert conn
     
 let dataReaderIsParallelizable conn =
     insertUsers conn

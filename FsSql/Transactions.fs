@@ -6,7 +6,7 @@ open Sql
 open FsSqlPrelude
 
 /// Wraps a function in a transaction with the specified <see cref="IsolationLevel"/>
-let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionManager) f =
+let transactionalWithIsolation (isolation: IsolationLevel) f =
     let transactionalWithIsolation' (conn: IDbConnection) = 
         let id = Guid.NewGuid().ToString()
         use tx = conn.BeginTransaction(isolation)
@@ -20,7 +20,7 @@ let transactionalWithIsolation (isolation: IsolationLevel) (cmgr: ConnectionMana
             tx.Rollback()
             logf "rolled back tx %s" id
             reraise()
-    fun () -> doWithConnection cmgr transactionalWithIsolation'
+    fun cmgr -> doWithConnection cmgr transactionalWithIsolation'
 
 /// Wraps a function in a transaction
 let transactional a = 

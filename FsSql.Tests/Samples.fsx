@@ -13,7 +13,6 @@ let openConn() =
 let connMgr = Sql.withNewConnection openConn
 
 // partial application of various common functions, around the connection manager
-let inTransaction a = Sql.transactional connMgr a
 let execScalar sql = Sql.execScalar connMgr sql
 let execReader sql = Sql.execReader connMgr sql
 let execReaderf sql = Sql.execReaderF connMgr sql
@@ -42,10 +41,10 @@ let insertNUsers n conn =
         insertUser i name address |> ignore
 
 // wraps the n records insertion in a transaction
-let insertNUsers2 n = insertNUsers n |> inTransaction
+let insertNUsers2 n = insertNUsers n |> Tx.transactional
 
 // executes the transaction, inserting 50 records
-insertNUsers2 50 ()
+insertNUsers2 50 connMgr
 
 let countUsers(): int64 =
     execScalar "select count(*) from user" [] |> Option.get
