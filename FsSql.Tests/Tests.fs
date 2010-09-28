@@ -179,7 +179,7 @@ let someTranAndFail conn =
     ()
 
 let transactionWithException conn =
-    let someTran = Sql.transactional conn someTranAndFail
+    let someTran = Tx.transactional conn someTranAndFail
     let someTran = catch () someTran
     someTran()
     Assert.AreEqual(0L, countUsers conn)
@@ -202,7 +202,7 @@ let someTran conn =
 
 let transactionCommitted conn =
     let someTran conn = someTran conn
-    let someTran = Sql.transactional conn someTran
+    let someTran = Tx.transactional conn someTran
     someTran()
     Assert.AreEqual(2L, countUsers conn)
 
@@ -221,13 +221,13 @@ let someTranWithSubTran conn =
     let subtran conn = 
         insertUser conn {id = 3; name = "jorge"; parent = None}
         failwith "this fails"
-    (Sql.transactional conn subtran)()
+    (Tx.transactional conn subtran)()
     insertUser conn {id = 1; name = "pepe"; parent = None}
     insertUser conn {id = 2; name = "jose"; parent = None}
     ()
 
 let nestedTransactionsAreNotSupported conn =
-    let someTran = Sql.transactional conn someTranWithSubTran
+    let someTran = Tx.transactional conn someTranWithSubTran
     assertThrows<SQLiteException> someTran
 
 [<Test;Parallelizable>]
@@ -242,11 +242,11 @@ let ``nested transactions are NOT supported persistent`` () =
     nestedTransactionsAreNotSupported (withNewDbFile())
 
 let transactionWithOption conn =
-    let someTran = Sql.transactional2 conn someTranAndFail
+    let someTran = Tx.transactional2 conn someTranAndFail
     let result = someTran()
     match result with
-    | Sql.Success v -> raise <| Exception("transaction should have failed!")
-    | Sql.Failure e -> printfn "Failed with exception %A" e
+    | Tx.Success v -> raise <| Exception("transaction should have failed!")
+    | Tx.Failure e -> printfn "Failed with exception %A" e
     Assert.AreEqual(0L, countUsers conn)
 
 [<Test;Parallelizable>]
@@ -282,7 +282,7 @@ let insertUsers conn =
         //for i in 100000000..100050000 do
         for i in 1..10 do
             insertUser conn {id = i; name = "pepe" + i.ToString(); parent = None}
-    let insert = Sql.transactionalWithIsolation IsolationLevel.ReadCommitted conn insert
+    let insert = Tx.transactionalWithIsolation IsolationLevel.ReadCommitted conn insert
     insert()
     
 let dataReaderIsParallelizable conn =
