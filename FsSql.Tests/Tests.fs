@@ -579,5 +579,4 @@ let ``compose tx`` () =
         Assert.Fail("Tx should have failed")
     with e -> 
         printfn "%s" e.Message
-        let x = Sql.execReaderF c "select count(*) from person" |> Sql.mapScalar
-        Assert.AreEqual(0L, x.Value)
+        Assert.AreEqual(0L, countUsers c)
