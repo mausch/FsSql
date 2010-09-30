@@ -79,6 +79,10 @@ let withNewDbFile() =
     createSchema (createPersistentConnection())
     Sql.withNewConnection createPersistentConnection
 
+let withMemDb() =
+    let conn = createConnectionAndSchema()
+    Sql.withConnection conn
+
 let userMapper r = 
     { id = (r?id).Value ; name = (r?name).Value; parent = r?parent }
 
@@ -581,16 +585,44 @@ let ``compose tx`` () =
         printfn "%s" e.Message
         Assert.AreEqual(0L, countUsers c)
 
-[<Test>]
+let tx = Tx.TransactionBuilder()
+
+[<Test;Parallelizable>]
 let ``tx monad error`` () = 
-    let c = withNewDbFile()
-    let tx = Tx.TransactionBuilder()
-    let tran = tx {
+    let c = withMemDb()
+    let tran() = tx {
         let! x = Tx.execNonQuery "select" []
-        return 1
+        return 3
     }
-    let result = tran c // execute transaction
+    let result = tran() c // execute transaction
     match result with
     | Tx.Success a -> Assert.Fail("Transaction should have failed")
     | Tx.Failure e -> printfn "Error: %A" e
-    ()
+
+[<Test;Parallelizable>]
+let ``tx monad error rollback`` () = 
+    let c = withMemDb()
+    let tran() = tx {
+        let! x = Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+        let! x = Tx.execNonQuery "select" []
+        return ()
+    }
+    let result = tran() c // execute transaction
+    match result with
+    | Tx.Success a -> Assert.Fail("Transaction should have failed")
+    | Tx.Failure e -> printfn "Error: %A" e
+    Assert.AreEqual(0L, countUsers c)
+
+[<Test>]
+let ``tx monad ok`` () = 
+    let c = withMemDb()
+    let tran() = tx {
+        let! x = Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+        let! x = Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",4);P("@name", "jorge")]
+        return 8
+    }
+    let result = tran() c // execute transaction
+    match result with
+    | Tx.Success a -> Assert.AreEqual(8, a)
+    | Tx.Failure e -> Assert.Fail("Transaction should not have failed")
+    Assert.AreEqual(2L, countUsers c)

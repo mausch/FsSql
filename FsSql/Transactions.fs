@@ -4,6 +4,8 @@ open System
 open System.Data
 open Sql
 open FsSqlPrelude
+open Microsoft.FSharp.Reflection
+
         
 /// Wraps a function in a transaction with the specified <see cref="IsolationLevel"/>
 let transactionalWithIsolation (isolation: IsolationLevel) f cmgr =
@@ -76,17 +78,40 @@ let transactional2 f (cmgr: ConnectionManager) =
 
 type M<'a> = ConnectionManager -> TxResult<'a>
 
-let bind m f cmgr = 
+let bind m f (cmgr: ConnectionManager) = 
     try
         match m cmgr with
         | Success a -> f a cmgr
-        | x -> x
-    with e -> Failure e
+        | Failure e -> Failure e
+    with e -> 
+        Failure e
 
 type TransactionBuilder() =
     member x.Bind(m,f) = bind m f
     member x.Return a = 
         fun (cmgr: ConnectionManager) -> Success a
+    (*member x.Using(a,f) = 
+        fun (cmgr: ConnectionManager) -> *)
+    member x.Run (f: ConnectionManager -> TxResult<'a>) = 
+        let transactional (conn: IDbConnection) =
+            let tx = conn.BeginTransaction()
+            let r = f (withConnection conn)
+            match r with
+            | Success a -> 
+                tx.Commit()
+                Success a
+            | Failure e ->
+                tx.Rollback()
+                Failure e
+
+        fun cmgr -> doWithConnection cmgr transactional
 
 let execNonQuery sql parameters mgr = 
     Sql.execNonQuery mgr sql parameters |> Success
+
+// TODO, problematic
+//let execNonQueryF sql parameters mgr = 
+//    Sql.execNonQueryF mgr sql parameters |> Success
+
+let execReader sql parameters mgr = 
+    Sql.execReader mgr sql parameters |> Success
