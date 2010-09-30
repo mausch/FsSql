@@ -616,9 +616,11 @@ let ``tx monad error rollback`` () =
 [<Test>]
 let ``tx monad ok`` () = 
     let c = withMemDb()
+    let insert (id: int) (name: string) = 
+        Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",id);P("@name", name)]
     let tran() = tx {
-        let! x = Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
-        let! x = Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",4);P("@name", "jorge")]
+        let! x = insert 3 "juan"
+        let! x = insert 4 "jorge"
         return 8
     }
     let result = tran() c // execute transaction
