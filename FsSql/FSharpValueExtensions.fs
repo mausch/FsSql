@@ -58,7 +58,7 @@ module FSharpValue =
             else unbox <| opt.GetType().GetMethod("get_IsSome").Invoke(null, [| opt |])
 
     /// <summary>
-    /// OptionType if value to match is an Option, otherwise NotOptionType
+    /// OptionType if value to match is a boxed Option, otherwise NotOptionType
     /// </summary>
     /// <exception cref="System.ArgumentException">Argument is not an option</exception>
     let (|OptionType|NotOptionType|) x = 
@@ -67,13 +67,10 @@ module FSharpValue =
             else NotOptionType
 
     /// <summary>
-    /// Extracts value associated with an Option.
+    /// Extracts value associated with a boxed Option.
     /// </summary>
     /// <exception cref="System.ArgumentException">Argument is not an option</exception>
-    let (|OSome|_|) (x: obj) =
-        if not (IsOption x)
-            then invalidArg "x" "Object must be of option type"
-            else 
-                if IsNone x
-                    then None
-                    else Some (GetOptionValue x)
+    let (|OSome|ONone|) (x: obj) : Choice<obj, unit> =
+        if IsNone x
+            then ONone
+            else OSome (GetOptionValue x)
