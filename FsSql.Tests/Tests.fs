@@ -633,7 +633,7 @@ let ``tx monad ok`` () =
 let ``tx monad using`` () = 
     let c = withMemDb()
     let tran() = tx {
-        let! x = Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+        do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
         use! reader = Tx.execReader "select * from person" []
         let id = 
             reader 

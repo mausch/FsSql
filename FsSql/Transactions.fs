@@ -108,6 +108,9 @@ type TransactionBuilder() =
 let execNonQuery sql parameters mgr = 
     Sql.execNonQuery mgr sql parameters |> Success
 
+let execNonQueryi sql parameters mgr = 
+    Sql.execNonQuery mgr sql parameters |> ignore |> Success
+
 // TODO, problematic
 //let execNonQueryF sql parameters mgr = 
 //    Sql.execNonQueryF mgr sql parameters |> Success
