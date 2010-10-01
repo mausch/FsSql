@@ -613,7 +613,7 @@ let ``tx monad error rollback`` () =
     | Tx.Failure e -> printfn "Error: %A" e
     Assert.AreEqual(0L, countUsers c)
 
-[<Test>]
+[<Test;Parallelizable>]
 let ``tx monad ok`` () = 
     let c = withMemDb()
     let insert (id: int) (name: string) = 
@@ -626,10 +626,10 @@ let ``tx monad ok`` () =
     let result = tran() c // execute transaction
     match result with
     | Tx.Success a -> Assert.AreEqual(8, a)
-    | Tx.Failure e -> Assert.Fail("Transaction should not have failed")
+    | Tx.Failure e -> raise <| Exception("Transaction should not have failed", e)
     Assert.AreEqual(2L, countUsers c)
 
-[<Test>]
+[<Test;Parallelizable>]
 let ``tx monad using`` () = 
     let c = withMemDb()
     let tran() = tx {
@@ -638,13 +638,11 @@ let ``tx monad using`` () =
         let id = 
             reader 
             |> Seq.ofDataReader 
-            |> Seq.map (Sql.readField "id")
-            |> Seq.map Option.get
-            |> Seq.cast<int>
+            |> Seq.map (Sql.readField "id" >> Option.get)
             |> Enumerable.First
         return id
     }
     let result = tran() c
     match result with
     | Tx.Success a -> Assert.AreEqual(3, a)
-    | Tx.Failure e -> Assert.Fail("Transaction should not have failed")
+    | Tx.Failure e -> raise <| Exception("Transaction should not have failed", e)

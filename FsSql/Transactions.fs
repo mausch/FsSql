@@ -78,19 +78,21 @@ let transactional2 f (cmgr: ConnectionManager) =
 
 type M<'a> = ConnectionManager -> TxResult<'a>
 
-let bind m f (cmgr: ConnectionManager) = 
-    try
-        match m cmgr with
-        | Success a -> f a cmgr
-        | Failure e -> Failure e
-    with e -> 
-        Failure e
-
 type TransactionBuilder() =
-    member x.Bind(m,f) = bind m f
+    member x.Bind(m, f) =
+        fun (cmgr: ConnectionManager) ->
+            try
+                match m cmgr with
+                | Success a -> f a cmgr
+                | Failure e -> Failure e
+            with e -> 
+                Failure e
+
     member x.Return a = 
         fun (cmgr: ConnectionManager) -> Success a
+
     member x.Using(a, f) = f a
+
     member x.Run (f: ConnectionManager -> TxResult<'a>) = 
         let transactional (conn: IDbConnection) =
             let tx = conn.BeginTransaction()
