@@ -90,8 +90,7 @@ type TransactionBuilder() =
     member x.Bind(m,f) = bind m f
     member x.Return a = 
         fun (cmgr: ConnectionManager) -> Success a
-    (*member x.Using(a,f) = 
-        fun (cmgr: ConnectionManager) -> *)
+    member x.Using(a, f) = f a
     member x.Run (f: ConnectionManager -> TxResult<'a>) = 
         let transactional (conn: IDbConnection) =
             let tx = conn.BeginTransaction()

@@ -628,3 +628,23 @@ let ``tx monad ok`` () =
     | Tx.Success a -> Assert.AreEqual(8, a)
     | Tx.Failure e -> Assert.Fail("Transaction should not have failed")
     Assert.AreEqual(2L, countUsers c)
+
+[<Test>]
+let ``tx monad using`` () = 
+    let c = withMemDb()
+    let tran() = tx {
+        let! x = Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+        use! reader = Tx.execReader "select * from person" []
+        let id = 
+            reader 
+            |> Seq.ofDataReader 
+            |> Seq.map (Sql.readField "id")
+            |> Seq.map Option.get
+            |> Seq.cast<int>
+            |> Enumerable.First
+        return id
+    }
+    let result = tran() c
+    match result with
+    | Tx.Success a -> Assert.AreEqual(3, a)
+    | Tx.Failure e -> Assert.Fail("Transaction should not have failed")
