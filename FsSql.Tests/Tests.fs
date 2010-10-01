@@ -107,8 +107,30 @@ let insertUser conn (p: Person) =
 let countUsers conn : int64 = 
     Sql.execScalar conn "select count(*) from person" [] |> Option.get
 
+let countUsersAdoNet() : int64 = 
+    use conn = createConnection()
+    let cmd = conn.CreateCommand()
+    cmd.CommandText <- "select count(*) from person"
+    unbox cmd.ExecuteScalar
+
 let deleteUser conn id = 
     Sql.execNonQueryF conn "delete person where id = %d" id |> ignore
+
+let deleteUserAdoNet (id: int) = 
+    use conn = createConnection()
+    let cmd = conn.CreateCommand()
+    cmd.CommandText <- "delete person where id = @id"
+    let p = cmd.CreateParameter()
+    p.ParameterName <- "@id"
+    p.Value <- id
+    cmd.Parameters.Add p |> ignore
+    cmd.ExecuteNonQuery() |> ignore
+
+let deleteUserWithCommand (id: int) = 
+    let cmd = Sql.createCommand (Sql.withNewConnection createConnection)
+    cmd.CommandText <- "delete person where id = @id"
+    P("@id", id) |> Sql.addParameter cmd
+    cmd.ExecuteNonQuery() |> ignore
 
 let insertThenGet conn = 
     insertUser conn {id = 1; name = "pepe"; parent = None}
