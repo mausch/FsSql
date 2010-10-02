@@ -633,8 +633,8 @@ let ``tx monad error`` () =
     }
     let result = tran() c // execute transaction
     match result with
-    | Tx.Commit a -> Assert.Fail("Transaction should have failed")
     | Tx.Failed e -> printfn "Error: %A" e
+    | _ -> Assert.Fail("Transaction should have failed")
 
 [<Test;Parallelizable>]
 let ``tx monad error rollback`` () = 
@@ -646,9 +646,10 @@ let ``tx monad error rollback`` () =
     }
     let result = tran() c // execute transaction
     match result with
-    | Tx.Commit a -> Assert.Fail("Transaction should have failed")
-    | Tx.Failed e -> printfn "Error: %A" e
-    Assert.AreEqual(0L, countUsers c)
+    | Tx.Failed e -> 
+        printfn "Error: %A" e
+        Assert.AreEqual(0L, countUsers c)
+    | _ -> Assert.Fail("Transaction should have failed")
 
 [<Test;Parallelizable>]
 let ``tx monad ok`` () = 
