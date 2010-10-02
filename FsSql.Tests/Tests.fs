@@ -271,8 +271,9 @@ let transactionWithOption conn =
     let someTran = Tx.transactional2 someTranAndFail
     let result = someTran conn
     match result with
-    | Tx.Success v -> raise <| Exception("transaction should have failed!")
-    | Tx.Failure e -> printfn "Failed with exception %A" e
+    | Tx.Commit v -> raise <| Exception("transaction should have failed!")
+    | Tx.Rollback v -> raise <| Exception("transaction should have failed!")
+    | Tx.Failed e -> printfn "Failed with exception %A" e
     Assert.AreEqual(0L, countUsers conn)
 
 [<Test;Parallelizable>]
@@ -632,8 +633,8 @@ let ``tx monad error`` () =
     }
     let result = tran() c // execute transaction
     match result with
-    | Tx.Success a -> Assert.Fail("Transaction should have failed")
-    | Tx.Failure e -> printfn "Error: %A" e
+    | Tx.Commit a -> Assert.Fail("Transaction should have failed")
+    | Tx.Failed e -> printfn "Error: %A" e
 
 [<Test;Parallelizable>]
 let ``tx monad error rollback`` () = 
@@ -645,8 +646,8 @@ let ``tx monad error rollback`` () =
     }
     let result = tran() c // execute transaction
     match result with
-    | Tx.Success a -> Assert.Fail("Transaction should have failed")
-    | Tx.Failure e -> printfn "Error: %A" e
+    | Tx.Commit a -> Assert.Fail("Transaction should have failed")
+    | Tx.Failed e -> printfn "Error: %A" e
     Assert.AreEqual(0L, countUsers c)
 
 [<Test;Parallelizable>]
@@ -661,8 +662,9 @@ let ``tx monad ok`` () =
     }
     let result = tran() c // execute transaction
     match result with
-    | Tx.Success a -> Assert.AreEqual(8, a)
-    | Tx.Failure e -> raise <| Exception("Transaction should not have failed", e)
+    | Tx.Commit a -> Assert.AreEqual(8, a)
+    | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
+    | Tx.Rollback e -> raise <| Exception("Transaction should not have failed")
     Assert.AreEqual(2L, countUsers c)
 
 [<Test;Parallelizable>]
@@ -680,5 +682,21 @@ let ``tx monad using`` () =
     }
     let result = tran() c
     match result with
-    | Tx.Success a -> Assert.AreEqual(3, a)
-    | Tx.Failure e -> raise <| Exception("Transaction should not have failed", e)
+    | Tx.Commit a -> Assert.AreEqual(3, a)
+    | Tx.Rollback a -> raise <| Exception("Transaction should not have failed")
+    | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
+
+[<Test;Parallelizable>]
+let ``tx rollback`` () = 
+    let c = withMemDb()
+    let tran() = tx {
+        do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+        do! Tx.rollback 4
+        return 0
+    }
+    let result = tran() c
+    match result with
+    | Tx.Rollback a -> 
+        Assert.AreEqual(4, a)
+        Assert.AreEqual(0L, countUsers c)
+    | _ -> Assert.Fail("Transaction should have been rolled back")

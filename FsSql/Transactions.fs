@@ -59,7 +59,13 @@ let required f cmgr =
     (g f) cmgr
 
 /// Transaction result
-type TxResult<'a> = Success of 'a | Failure of exn
+type TxResult<'a,'b> = 
+    /// Transaction committed successfully
+    | Commit of 'a 
+    /// Transaction manually rolled back
+    | Rollback of 'b
+    /// Transaction failed due to an exception and was rolled back
+    | Failed of exn
 
 /// <summary>
 /// Wraps a function in a transaction, returns a <see cref="TxResult"/>
@@ -70,52 +76,58 @@ let transactional2 f (cmgr: ConnectionManager) =
         try
             let r = f (withConnection conn) 
             tx.Commit()
-            Success r
+            Commit r
         with e ->
             tx.Rollback()
-            Failure e
+            Failed e
     doWithConnection cmgr transactional2'
 
-type M<'a> = ConnectionManager -> TxResult<'a>
+type M<'a,'b> = ConnectionManager -> TxResult<'a,'b>
 
 type TransactionBuilder() =
     member x.Bind(m, f) =
         fun (cmgr: ConnectionManager) ->
             try
                 match m cmgr with
-                | Success a -> f a cmgr
-                | Failure e -> Failure e
+                | Commit a -> f a cmgr
+                | Rollback a -> Rollback a
+                | Failed e -> Failed e
             with e -> 
-                Failure e
+                Failed e
 
     member x.Return a = 
-        fun (cmgr: ConnectionManager) -> Success a
+        fun (cmgr: ConnectionManager) -> Commit a
 
     member x.Using(a, f) = f a
 
-    member x.Run (f: ConnectionManager -> TxResult<'a>) = 
+    member x.Run (f: ConnectionManager -> TxResult<_,_>) = 
         let transactional (conn: IDbConnection) =
             let tx = conn.BeginTransaction()
             let r = f (withConnection conn)
             match r with
-            | Success a -> 
+            | Commit a -> 
                 tx.Commit()
-                Success a
-            | Failure e ->
+                Commit a
+            | Rollback a ->
                 tx.Rollback()
-                Failure e
+                Rollback a
+            | Failed e ->
+                tx.Rollback()
+                Failed e
 
         fun cmgr -> doWithConnection cmgr transactional
 
 let execNonQuery sql parameters mgr = 
-    Sql.execNonQuery mgr sql parameters |> Success
+    Sql.execNonQuery mgr sql parameters |> Commit
 
 let execNonQueryi sql parameters mgr = 
-    Sql.execNonQuery mgr sql parameters |> ignore |> Success
+    Sql.execNonQuery mgr sql parameters |> ignore |> Commit
 
 // TODO, problematic
 //let execNonQueryF sql parameters mgr = 
 //    Sql.execNonQueryF mgr sql parameters |> Success
 
 let execReader sql parameters mgr = 
-    Sql.execReader mgr sql parameters |> Success
+    Sql.execReader mgr sql parameters |> Commit
+
+let rollback a mgr = Rollback a
