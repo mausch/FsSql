@@ -596,7 +596,7 @@ let ``compose tx`` () =
     let f1 m = Sql.execNonQueryF m "insert into person (id,name) values (%d, %s)" 3 "one" |> ignore
     let f1 = Tx.required f1
     let f2 m = Sql.execNonQueryF m "invalid sql statement" |> ignore
-    let f2 = Tx.required f2
+    let f2 = Tx.supported f2
     let finalTx mgr =
         f1 mgr
         f2 mgr
@@ -606,6 +606,20 @@ let ``compose tx`` () =
     with e -> 
         printfn "%s" e.Message
         Assert.AreEqual(0L, countUsers c)
+
+[<Test>]
+let ``tx required and never throw`` () = 
+    let c = withNewDbFile()
+    let f1 m = Sql.execNonQueryF m "insert into person (id,name) values (%d, %s)" 3 "one" |> ignore
+    let f1 = f1 |> Tx.never |> Tx.required
+    try
+        f1 c
+        Assert.Fail("Tx should have failed")
+    with e -> 
+        printfn "%s" e.Message
+        Assert.AreEqual(0L, countUsers c)
+    ()
+
 
 let tx = Tx.TransactionBuilder()
 
