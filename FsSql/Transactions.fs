@@ -82,7 +82,7 @@ let transactional2 f (cmgr: ConnectionManager) =
             Failed e
     doWithConnection cmgr transactional2'
 
-type M<'a,'b> = ConnectionManager -> TxResult<'a,'b>
+//type M<'a,'b> = ConnectionManager -> TxResult<'a,'b>
 
 type TransactionBuilder() =
     member x.Zero() = 
@@ -106,12 +106,21 @@ type TransactionBuilder() =
     member x.Return a = 
         fun (cmgr: ConnectionManager) -> Commit a
 
-    member x.Using(a, f) = f a
+    member x.TryFinally(m: ConnectionManager -> TxResult<_,_>, f: unit -> unit) = 
+        fun (cmgr: ConnectionManager) ->
+            try
+                m cmgr
+            finally
+                f()
+
+    member x.Using(a, f) = 
+        let dispose() = (a :> IDisposable).Dispose()
+        x.TryFinally(f a, dispose)
 
     member x.Run (f: ConnectionManager -> TxResult<_,_>) = 
         let transactional (conn: IDbConnection) =
             let tx = conn.BeginTransaction()
-            let r = f (withConnection conn)
+            let r = f (withTransaction tx)
             match r with
             | Commit a -> 
                 tx.Commit()

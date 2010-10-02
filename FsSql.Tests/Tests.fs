@@ -687,7 +687,7 @@ let ``tx monad using`` () =
     | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
 
 [<Test;Parallelizable>]
-let ``tx rollback and zero`` () = 
+let ``tx monad rollback and zero`` () = 
     let c = withMemDb()
     let tran() = tx {
         do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
@@ -701,3 +701,20 @@ let ``tx rollback and zero`` () =
         Assert.AreEqual(4, a)
         Assert.AreEqual(0L, countUsers c)
     | _ -> Assert.Fail("Transaction should have been rolled back")
+
+[<Test;Parallelizable>]
+let ``tx monad tryfinally`` () = 
+    let c = withMemDb()
+    let finallyRun = ref false
+    let tran() = tx {
+        try
+            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+            failwith "Error!"
+        finally
+            finallyRun := true
+    }
+    let result = tran() c
+    match result with
+    | Tx.Failed e ->
+        Assert.AreEqual("Error!", e.Message)
+    | _ -> Assert.Fail("Transaction should have failed")
