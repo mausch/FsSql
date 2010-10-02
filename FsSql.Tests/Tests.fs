@@ -687,11 +687,12 @@ let ``tx monad using`` () =
     | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
 
 [<Test;Parallelizable>]
-let ``tx rollback`` () = 
+let ``tx rollback and zero`` () = 
     let c = withMemDb()
     let tran() = tx {
         do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
-        do! Tx.rollback 4
+        if 1 = 1
+            then do! Tx.rollback 4
         return 0
     }
     let result = tran() c

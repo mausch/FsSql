@@ -85,6 +85,11 @@ let transactional2 f (cmgr: ConnectionManager) =
 type M<'a,'b> = ConnectionManager -> TxResult<'a,'b>
 
 type TransactionBuilder() =
+    member x.Zero() = 
+        fun (cmgr: ConnectionManager) -> Commit ()
+
+    member x.Delay f = f()
+
     member x.Bind(m, f) =
         fun (cmgr: ConnectionManager) ->
             try
@@ -94,6 +99,9 @@ type TransactionBuilder() =
                 | Failed e -> Failed e
             with e -> 
                 Failed e
+
+    member x.Combine(m1, m2) = 
+        x.Bind(m1, fun() -> m2)
 
     member x.Return a = 
         fun (cmgr: ConnectionManager) -> Commit a
@@ -130,4 +138,4 @@ let execNonQueryi sql parameters mgr =
 let execReader sql parameters mgr = 
     Sql.execReader mgr sql parameters |> Commit
 
-let rollback a mgr = Rollback a
+let rollback a (mgr: ConnectionManager) = Rollback a
