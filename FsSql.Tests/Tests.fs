@@ -627,13 +627,17 @@ let tx = Tx.TransactionBuilder()
 [<Test;Parallelizable>]
 let ``tx monad error`` () = 
     let c = withMemDb()
+    let v = ref false
     let tran() = tx {
         let! x = Tx.execNonQuery "select" []
+        v := true
         return 3
     }
     let result = tran() c // execute transaction
     match result with
-    | Tx.Failed e -> printfn "Error: %A" e
+    | Tx.Failed e -> 
+        Assert.AreEqual(false, !v)
+        printfn "Error: %A" e
     | _ -> Assert.Fail("Transaction should have failed")
 
 [<Test;Parallelizable>]
