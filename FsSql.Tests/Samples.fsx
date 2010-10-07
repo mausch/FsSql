@@ -18,6 +18,8 @@ let execReader sql = Sql.execReader connMgr sql
 let execReaderf sql = Sql.execReaderF connMgr sql
 let execNonQueryf sql = Sql.execNonQueryF connMgr sql
 let exec a = Sql.execNonQuery connMgr a [] |> ignore
+let P = Sql.Parameter.make
+let tx = Tx.TransactionBuilder()
 
 // create the schema
 exec "drop table if exists user"
@@ -27,7 +29,7 @@ exec "create table user (id int primary key not null, name varchar not null, add
 let insertUser connMgr (id: int) (name: string) (address: string option) = 
     Sql.execNonQuery connMgr 
         "insert into user (id,name,address) values (@id,@name,@address)"
-        (Sql.parameters ["@id", box id; "@name", box name; "@address", box address])
+        [P("@id", id); P("@name", name); P("@address", address)]
 
 // a function that inserts N records with some predefined values
 let insertNUsers n conn =
@@ -66,7 +68,7 @@ execReader "select * from user" []
 
 execNonQueryf "delete from user where id > %d" 10 |> ignore
 
-printfn "Now there are %d users" (countUsers())
+printfn "Now there are %d users" (countUsers()) // will print 10
 
 // a record type representing a row in the table
 type User = {
@@ -79,8 +81,29 @@ type User = {
 let asUser (r: #IDataRecord) =
     {id = (r?id).Value; name = (r?name).Value; address = r?address}
 
+// alternative, equivalent definition of asUser
+let asUser2 r = Sql.asRecord<User> "" r
+
 // get the first user
 let firstUser = execReader "select * from user limit 1" [] |> Sql.mapOne asUser 
 
 printfn "first user's name: %s" firstUser.name
 printfn "first user does%s have an address" (if firstUser.address.IsNone then " not" else "")
+
+// clear table
+exec "delete from user"
+
+// composable transactions
+let txInsertUsers n = insertNUsers n |> Tx.required
+let txInsertOneUser = Tx.mandatory insertUser
+let insertAllUsers m = 
+    txInsertUsers 10 m
+    txInsertOneUser m 3 "John" None |> ignore
+let txInsertAllUsers = Tx.required insertAllUsers
+// run transaction, will fail due to duplicate PK
+try
+    txInsertAllUsers connMgr
+with e ->
+    printfn "Failed to insert all users:\n %s" e.Message
+printfn "Now there are %d users" (countUsers()) // will print 0
+
