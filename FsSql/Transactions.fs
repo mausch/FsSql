@@ -149,9 +149,13 @@ type TransactionBuilder() =
             | None -> doWithConnection cmgr transactional
             | Some t -> subscribe t
 
+/// Executes a SQL statement and returns the number of rows affected.
+/// For use within a tx monad.
 let execNonQuery sql parameters mgr = 
     Sql.execNonQuery mgr sql parameters |> Commit
 
+/// Executes a SQL statement.
+/// For use within a tx monad.
 let execNonQueryi sql parameters mgr = 
     Sql.execNonQuery mgr sql parameters |> ignore |> Commit
 
@@ -159,7 +163,11 @@ let execNonQueryi sql parameters mgr =
 //let execNonQueryF sql parameters mgr = 
 //    Sql.execNonQueryF mgr sql parameters |> Success
 
+/// Executes a query and returns a data reader.
+/// For use within a tx monad.
 let execReader sql parameters mgr = 
     Sql.execReader mgr sql parameters |> Commit
 
+/// Rolls back the transaction.
+/// For use within a tx monad.
 let rollback a (mgr: ConnectionManager) = Rollback a
