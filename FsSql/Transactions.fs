@@ -118,6 +118,17 @@ type TransactionBuilder() =
         x.TryFinally(f a, dispose)
 
     member x.Run (f: ConnectionManager -> TxResult<_,_>) = 
+        let subscribe (tx: IDbTransaction) = 
+            let r = f (withTransaction tx)
+            match r with
+            | Commit a -> Commit a
+            | Rollback a ->
+                tx.Rollback()
+                Rollback a
+            | Failed e ->
+                tx.Rollback()
+                Failed e
+
         let transactional (conn: IDbConnection) =
             let tx = conn.BeginTransaction()
             let r = f (withTransaction tx)
@@ -132,7 +143,11 @@ type TransactionBuilder() =
                 tx.Rollback()
                 Failed e
 
-        fun cmgr -> doWithConnection cmgr transactional
+        fun cmgr -> 
+            let _,_,tx = cmgr
+            match tx with
+            | None -> doWithConnection cmgr transactional
+            | Some t -> subscribe t
 
 let execNonQuery sql parameters mgr = 
     Sql.execNonQuery mgr sql parameters |> Commit

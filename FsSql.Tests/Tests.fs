@@ -723,3 +723,19 @@ let ``tx monad tryfinally`` () =
     | Tx.Failed e ->
         Assert.AreEqual("Error!", e.Message)
     | _ -> Assert.Fail("Transaction should have failed")
+
+[<Test;Parallelizable>]
+let ``tx monad composable`` () =
+    let c = withMemDb()
+    let tran1() = tx {
+        do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+    }
+    let tran() = tx {
+        do! tran1()
+        do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",4);P("@name", "john")]
+    }
+    let result = tran() c
+    match result with
+    | Tx.Commit a -> Assert.AreEqual(2L, countUsers c)
+    | Tx.Rollback a -> raise <| Exception("Transaction should not have failed")
+    | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
