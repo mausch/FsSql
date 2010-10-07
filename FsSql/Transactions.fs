@@ -74,7 +74,7 @@ let transactional2 f (cmgr: ConnectionManager) =
     let transactional2' (conn: IDbConnection) =
         let tx = conn.BeginTransaction()
         try
-            let r = f (withConnection conn) 
+            let r = f (withTransaction tx)
             tx.Commit()
             Commit r
         with e ->
