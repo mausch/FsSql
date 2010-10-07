@@ -19,7 +19,6 @@ let execReaderf sql = Sql.execReaderF connMgr sql
 let execNonQueryf sql = Sql.execNonQueryF connMgr sql
 let exec a = Sql.execNonQuery connMgr a [] |> ignore
 let P = Sql.Parameter.make
-let tx = Tx.TransactionBuilder()
 
 // create the schema
 exec "drop table if exists user"
@@ -107,3 +106,21 @@ with e ->
     printfn "Failed to insert all users:\n %s" e.Message
 printfn "Now there are %d users" (countUsers()) // will print 0
 
+// tx monad
+let tx = Tx.TransactionBuilder()
+let tran1() = tx {
+    do! Tx.execNonQueryi
+            "insert into user (id,name) values (@id,@name)"
+            [P("@id", 99); P("@name", "John Doe")]
+}
+let tran() = tx {
+    do! tran1()
+    do! Tx.execNonQueryi "insert into blabla" [] // invalid SQL
+    return 0
+}
+// execute transaction, will fail
+match tran() connMgr with
+| Tx.Commit a -> printfn "Transaction successful, return value %d" a
+| Tx.Rollback a -> printfn "Transaction rolled back, return value %A" a
+| Tx.Failed e -> printfn "Transaction failed with exception:\n %s" e.Message
+printfn "Now there are %d users" (countUsers()) // will print 0
