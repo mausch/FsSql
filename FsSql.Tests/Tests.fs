@@ -593,29 +593,29 @@ let ``asRecord throws with non-record type`` () =
 
 [<Test;Parallelizable>]
 let ``map single field`` () =
-    let c = withNewDbFile()
+    let c = withMemDb()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
-    let v = Sql.execReader c "select * from person" [] |> Sql.map (Sql.asScalari<int> 0)
-    let v = v |> Seq.toList
+    let v = Sql.execReader c "select id from person" [] |> Sql.map (Sql.asScalari<int> 0)
+    let v = Seq.toList v
     Assert.AreEqual(1, v.Length)
     Assert.AreEqual(5, v.[0])
 
 [<Test;Parallelizable>]
 let ``map to pair`` () =
-    let c = withNewDbFile()
+    let c = withMemDb()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
-    let v = Sql.execReader c "select * from person" [] |> Sql.map Sql.asPair
-    let v = v |> Seq.toList
+    let v = Sql.execReader c "select id,name from person" [] |> Sql.map Sql.asPair
+    let v = Seq.toList v
     Assert.AreEqual(1, v.Length)
     Assert.AreEqual(5, fst v.[0])
     Assert.AreEqual("John", snd v.[0])
 
 [<Test;Parallelizable>]
 let ``map to triple`` () =
-    let c = withNewDbFile()
+    let c = withMemDb()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
-    let v = Sql.execReader c "select * from person" [] |> Sql.map Sql.asTriple<int,string,string option>
-    let v = v |> Seq.toList
+    let v = Sql.execReader c "select id,name,parent from person" [] |> Sql.map Sql.asTriple<int,string,int option>
+    let v = Seq.toList v
     Assert.AreEqual(1, v.Length)
     let a,b,c = v.[0]
     Assert.AreEqual(5, a)
