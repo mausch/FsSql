@@ -306,18 +306,40 @@ let mapOne mapper datareader =
     |> map mapper
     |> Enumerable.Single
 
+/// Maps a record as a sequence of name,value
 let asNameValue (r: IDataRecord) =
     let names = {0..r.FieldCount-1} |> Seq.map r.GetName
     let values = {0..r.FieldCount-1} |> Seq.map r.GetValue
     Seq.zip names values
 
+/// Maps a record as a Map of name,value
 let asMap r = r |> asNameValue |> Map.ofSeq
+
+/// Maps a record as a dictionary of name,value
 let asDict r = 
     let values = r |> asNameValue
     let d = Dictionary(StringComparer.InvariantCultureIgnoreCase)
     for k,v in values do
         d.Add(k,v)
     d
+
+/// Maps a single field (with position i) from a record.
+let asScalari<'a> (i: int) (r: IDataRecord) : 'a = 
+    let v = Option.fromDBNull r.[i]
+    if FSharpType.IsOption typeof<'a>
+        then unbox v
+        else unbox v.Value
+
+/// Maps the first field from a record
+let asScalar r = asScalari 0 r
+
+/// Maps the first 2 fields from a record as a tuple
+let asPair<'a,'b> (r: IDataRecord) = 
+    asScalari<'a> 0 r, asScalari<'b> 1 r
+
+/// Maps the first 3 fields from a record as a tuple
+let asTriple<'a,'b,'c> (r: IDataRecord) = 
+    asScalari<'a> 0 r, asScalari<'b> 1 r, asScalari<'c> 2 r
 
 /// <summary>
 /// Converts a mapper into an optional mapper. 

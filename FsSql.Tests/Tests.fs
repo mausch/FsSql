@@ -591,6 +591,16 @@ let ``asRecord throws with non-record type`` () =
         let kk = Sql.asRecord<string>
         ())
 
+[<Test;Parallelizable>]
+let ``map single field`` () =
+    let c = withNewDbFile()
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    let v = Sql.execReader c "select * from person" [] |> Sql.map (Sql.asScalari<int> 0)
+    let v = v |> Seq.toList
+    Assert.AreEqual(1, v.Length)
+    Assert.AreEqual(5, v.[0])
+    ()
+
 [<Test>]
 let ``compose tx`` () = 
     let c = withNewDbFile()
