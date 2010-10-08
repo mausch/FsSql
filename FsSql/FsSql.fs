@@ -324,22 +324,43 @@ let asDict r =
     d
 
 /// Maps a single field (with position i) from a record.
-let asScalari<'a> (i: int) (r: IDataRecord) : 'a = 
-    let v = Option.fromDBNull r.[i]
-    if FSharpType.IsOption typeof<'a>
-        then unbox v
-        else unbox v.Value
+let asScalari<'a> : int -> IDataRecord -> 'a = 
+    let isOption = FSharpType.IsOption typeof<'a>
+    fun (i: int) (r: IDataRecord) ->
+        let v = Option.fromDBNull r.[i]
+        if isOption
+            then unbox v
+            else unbox v.Value
 
 /// Maps the first field from a record
 let asScalar r = asScalari 0 r
 
 /// Maps the first 2 fields from a record as a tuple
-let asPair<'a,'b> (r: IDataRecord) = 
-    asScalari<'a> 0 r, asScalari<'b> 1 r
+let asPair<'a,'b> = 
+    let s1 = asScalari<'a> 0
+    let s2 = asScalari<'b> 1
+    fun r -> s1 r, s2 r
+
+/// Maps the first 2 fields from a record as a tuple
+let asTuple2<'a,'b> : IDataRecord -> 'a * 'b = asPair
 
 /// Maps the first 3 fields from a record as a tuple
-let asTriple<'a,'b,'c> (r: IDataRecord) = 
-    asScalari<'a> 0 r, asScalari<'b> 1 r, asScalari<'c> 2 r
+let asTriple<'a,'b,'c> = 
+    let s1 = asScalari<'a> 0
+    let s2 = asScalari<'b> 1
+    let s3 = asScalari<'c> 2
+    fun r -> s1 r, s2 r, s3 r
+
+/// Maps the first 3 fields from a record as a tuple
+let asTuple3<'a,'b,'c> : IDataRecord -> 'a * 'b * 'c = asTriple
+
+/// Maps the first 4 fields from a record as a tuple
+let asTuple4<'a,'b,'c,'d> = 
+    let s1 = asScalari<'a> 0
+    let s2 = asScalari<'b> 1
+    let s3 = asScalari<'c> 2
+    let s4 = asScalari<'d> 3
+    fun r -> s1 r, s2 r, s3 r, s4 r
 
 /// <summary>
 /// Converts a mapper into an optional mapper. 
