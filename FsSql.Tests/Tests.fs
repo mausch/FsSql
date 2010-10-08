@@ -599,7 +599,28 @@ let ``map single field`` () =
     let v = v |> Seq.toList
     Assert.AreEqual(1, v.Length)
     Assert.AreEqual(5, v.[0])
-    ()
+
+[<Test;Parallelizable>]
+let ``map to pair`` () =
+    let c = withNewDbFile()
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    let v = Sql.execReader c "select * from person" [] |> Sql.map Sql.asPair
+    let v = v |> Seq.toList
+    Assert.AreEqual(1, v.Length)
+    Assert.AreEqual(5, fst v.[0])
+    Assert.AreEqual("John", snd v.[0])
+
+[<Test;Parallelizable>]
+let ``map to triple`` () =
+    let c = withNewDbFile()
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    let v = Sql.execReader c "select * from person" [] |> Sql.map Sql.asTriple<int,string,string option>
+    let v = v |> Seq.toList
+    Assert.AreEqual(1, v.Length)
+    let a,b,c = v.[0]
+    Assert.AreEqual(5, a)
+    Assert.AreEqual("John", b)
+    Assert.IsTrue(c.IsNone)
 
 [<Test>]
 let ``compose tx`` () = 
