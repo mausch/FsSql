@@ -326,11 +326,18 @@ let asDict r =
 /// Maps a single field (with position i) from a record.
 let asScalari<'a> : int -> IDataRecord -> 'a = 
     let isOption = FSharpType.IsOption typeof<'a>
+    let underlyingType = 
+        if isOption
+            then typeof<'a>.GetGenericArguments().[0]
+            else null
+
     fun (i: int) (r: IDataRecord) ->
         let v = Option.fromDBNull r.[i]
-        if isOption
-            then unbox v
-            else unbox v.Value
+        match v, isOption with
+        | None, true -> unbox <| FSharpValue.MakeOptionNone underlyingType
+        | None, false -> failwithf "Can't map null to non-option type %s" typeof<'a>.Name
+        | Some x, true -> unbox <| FSharpValue.MakeOptionSome underlyingType x
+        | Some x, false -> unbox x
 
 /// Maps the first field from a record
 let asScalar r = asScalari 0 r

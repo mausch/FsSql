@@ -601,6 +601,16 @@ let ``map single field`` () =
     Assert.AreEqual(5, v.[0])
 
 [<Test;Parallelizable>]
+let ``map single field as option`` () =
+    let c = withMemDb()
+    Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
+    let v = Sql.execReader c "select id from person" [] |> Sql.map (Sql.asScalari<int option> 0)
+    let v = Seq.toList v
+    Assert.AreEqual(1, v.Length)
+    Assert.IsTrue(v.[0].IsSome)
+    Assert.AreEqual(5, v.[0].Value)
+
+[<Test;Parallelizable>]
 let ``map to pair`` () =
     let c = withMemDb()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
