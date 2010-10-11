@@ -1,6 +1,7 @@
 ﻿#r "bin\debug\FsSql.dll"
 #r "bin\debug\System.Data.SQlite.dll"
 
+open System
 open System.Data
 
 // a function that opens a connection
@@ -23,6 +24,8 @@ let P = Sql.Parameter.make
 // create the schema
 exec "drop table if exists user"
 exec "create table user (id int primary key not null, name varchar not null, address varchar null)"
+exec "drop table if exists animal"
+exec "create table animal (id int primary key not null, name varchar not null, owner int null, animalType varchar not null)"
 
 // a function that inserts a record
 let insertUser connMgr (id: int) (name: string) (address: string option) = 
@@ -89,7 +92,56 @@ let firstUser = execReader "select * from user limit 1" [] |> Sql.mapOne asUser
 printfn "first user's name: %s" firstUser.name
 printfn "first user does%s have an address" (if firstUser.address.IsNone then " not" else "")
 
-// clear table
+// a record type representing a row in the table
+type Animal = {
+    id: int
+    name: string
+    animalType: string
+    owner: int option
+}
+
+let insertAnimal (animal: Animal) = 
+    let toNull = function Some x -> x.ToString() | _ -> "null"
+    execNonQueryf
+        "insert into animal (id, name, animalType, owner) values (%d, %s, %s, %s)"
+        animal.id animal.name animal.animalType (toNull animal.owner) |> ignore
+
+// inserting sample data
+insertAnimal {id = 1; name = "Seymour"; animalType = "dog"; owner = Some 1}
+insertAnimal {id = 2; name = "Goldie"; animalType = "fish"; owner = Some 1}
+insertAnimal {id = 3; name = "Tramp"; animalType = "dog"; owner = None}
+
+// mapping an inner join
+let asUserWithAnimal (r: #IDataRecord) =
+    Sql.asRecord<User> "u" r, Sql.asRecord<Animal> "a" r
+
+let innerJoinSql = sprintf "select %s,%s from user u join animal a on a.owner = u.id" 
+                      (Sql.recordFieldsAlias typeof<User> "u")
+                      (Sql.recordFieldsAlias typeof<Animal> "a")
+
+execReader innerJoinSql []
+|> Sql.map asUserWithAnimal
+|> Seq.groupByFst
+|> Seq.iter (fun (person, animals) ->
+                printfn "%s has pets %s" person.name (String.Join(", ", animals |> Seq.map (fun a -> a.name))))
+
+
+// mapping a left join
+let asUserWithOptionalAnimal (r: #IDataRecord) =
+    Sql.asRecord<User> "u" r, (Sql.asRecord<Animal> "a" |> Sql.optionalBy "a_id") r
+
+let leftJoinSql = sprintf "select %s,%s from user u left join animal a on a.owner = u.id" 
+                     (Sql.recordFieldsAlias typeof<User> "u")
+                     (Sql.recordFieldsAlias typeof<Animal> "a")
+execReader leftJoinSql []
+|> Sql.map asUserWithOptionalAnimal
+|> Seq.groupByFst
+|> Seq.chooseSnd
+|> Seq.iter (fun (person, animals) ->
+                printfn "%s has pets %s" person.name (String.Join(", ", animals |> Seq.map (fun a -> a.name))))
+
+// clear tables
+exec "delete from animal"
 exec "delete from user"
 
 // composable transactions
