@@ -74,3 +74,20 @@ module FSharpValue =
         if IsNone x
             then ONone
             else OSome (GetOptionValue x)
+
+    let UnwrapOption (t: Type) (o: obj option) =
+        let isOption = FSharpType.IsOption t
+        let underlyingType = 
+            if isOption
+                then t.GetGenericArguments().[0]
+                else null
+
+        match o, isOption with
+        | None, true -> MakeOptionNone underlyingType
+        | None, false -> failwithf "Can't map null to non-option type %s" t.Name
+        | Some x, true -> MakeOptionSome underlyingType x
+        | Some x, false -> x
+
+    let UnwrapOptionT<'a> (o: obj option): 'a = 
+        unbox <| UnwrapOption typeof<'a> o
+
