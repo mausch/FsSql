@@ -85,9 +85,6 @@ let transactional2 f (cmgr: ConnectionManager) =
 //type M<'a,'b> = ConnectionManager -> TxResult<'a,'b>
 
 type TransactionBuilder() =
-    member x.Zero() = 
-        fun (cmgr: ConnectionManager) -> Commit ()
-
     member x.Delay f = f()
 
     member x.Bind(m, f) =
@@ -105,6 +102,8 @@ type TransactionBuilder() =
 
     member x.Return a = 
         fun (cmgr: ConnectionManager) -> Commit a
+
+    member x.Zero() = x.Return ()
 
     member x.TryFinally(m: ConnectionManager -> TxResult<_,_>, f: unit -> unit) = 
         fun (cmgr: ConnectionManager) ->
