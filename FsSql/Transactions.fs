@@ -116,11 +116,11 @@ type TransactionBuilder() =
         let dispose() = (a :> IDisposable).Dispose()
         x.TryFinally(f a, dispose)
 
-    member x.Run (f: ConnectionManager -> TxResult<_,_>) = 
-        let subscribe (tx: IDbTransaction) = 
+    member x.Run (f: ConnectionManager -> TxResult<'a,_>) =         
+        let subscribe (tx: IDbTransaction) (onCommit: IDbTransaction -> 'a -> TxResult<'a,_>) = 
             let r = f (withTransaction tx)
             match r with
-            | Commit a -> Commit a
+            | Commit a -> onCommit tx a
             | Rollback a ->
                 tx.Rollback()
                 Rollback a
@@ -130,23 +130,16 @@ type TransactionBuilder() =
 
         let transactional (conn: IDbConnection) =
             let tx = conn.BeginTransaction()
-            let r = f (withTransaction tx)
-            match r with
-            | Commit a -> 
-                tx.Commit()
-                Commit a
-            | Rollback a ->
-                tx.Rollback()
-                Rollback a
-            | Failed e ->
-                tx.Rollback()
-                Failed e
+            let onCommit (tran: IDbTransaction) result = 
+                tran.Commit()
+                Commit result
+            subscribe tx onCommit
 
         fun cmgr -> 
             let _,_,tx = cmgr
             match tx with
             | None -> doWithConnection cmgr transactional
-            | Some t -> subscribe t
+            | Some t -> subscribe t (fun _ -> Commit)
 
 /// Executes a SQL statement and returns the number of rows affected.
 /// For use within a tx monad.
