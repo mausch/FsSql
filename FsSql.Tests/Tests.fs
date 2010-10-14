@@ -763,6 +763,7 @@ let ``tx monad tryfinally`` () =
     match result with
     | Tx.Failed e ->
         Assert.AreEqual("Error!", e.Message)
+        Assert.IsTrue(!finallyRun)
     | _ -> Assert.Fail("Transaction should have failed")
 
 [<Test;Parallelizable>]
