@@ -13,6 +13,8 @@ open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Reflection
 
 let P = Sql.Parameter.make
+let failwithe (e: #exn) msg = raise <| Exception(msg, e)
+let failwithef (e: #exn) = Printf.kprintf (failwithe e)
 
 [<Test>]
 let catchtest() =
@@ -271,8 +273,8 @@ let transactionWithOption conn =
     let someTran = Tx.transactional2 someTranAndFail
     let result = someTran conn
     match result with
-    | Tx.Commit v -> raise <| Exception("transaction should have failed!")
-    | Tx.Rollback v -> raise <| Exception("transaction should have failed!")
+    | Tx.Commit v -> failwith "transaction should have failed!"
+    | Tx.Rollback v -> failwith "transaction should have failed!"
     | Tx.Failed e -> printfn "Failed with exception %A" e
     Assert.AreEqual(0L, countUsers conn)
 
@@ -709,8 +711,8 @@ let ``tx monad ok`` () =
     let result = tran() c // execute transaction
     match result with
     | Tx.Commit a -> Assert.AreEqual(8, a)
-    | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
-    | Tx.Rollback e -> raise <| Exception("Transaction should not have failed")
+    | Tx.Failed e -> failwithe e "Transaction should not have failed"
+    | Tx.Rollback e -> failwith "Transaction should not have failed"
     Assert.AreEqual(2L, countUsers c)
 
 [<Test;Parallelizable>]
@@ -729,8 +731,8 @@ let ``tx monad using`` () =
     let result = tran() c
     match result with
     | Tx.Commit a -> Assert.AreEqual(3, a)
-    | Tx.Rollback a -> raise <| Exception("Transaction should not have failed")
-    | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
+    | Tx.Rollback a -> failwith "Transaction should not have failed"
+    | Tx.Failed e -> failwithe e "Transaction should not have failed"
 
 [<Test;Parallelizable>]
 let ``tx monad rollback and zero`` () = 
@@ -779,8 +781,8 @@ let ``tx monad composable`` () =
     let result = tran() c
     match result with
     | Tx.Commit a -> Assert.AreEqual(2L, countUsers c)
-    | Tx.Rollback a -> raise <| Exception("Transaction should not have failed")
-    | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
+    | Tx.Rollback a -> failwith "Transaction should not have failed"
+    | Tx.Failed e -> failwithe e "Transaction should not have failed"
 
 [<Test;Parallelizable>]
 let ``tx monad for`` () = 
@@ -793,7 +795,7 @@ let ``tx monad for`` () =
     match result with
     | Tx.Commit a -> Assert.AreEqual(50L, countUsers c)
     | Tx.Rollback a -> failwith "Transaction should not have failed"
-    | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
+    | Tx.Failed e -> failwithe e "Transaction should not have failed"
 
 [<Test;Parallelizable>]
 let ``tx monad for with error`` () =
