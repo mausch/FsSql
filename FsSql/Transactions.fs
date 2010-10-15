@@ -105,6 +105,19 @@ type TransactionBuilder() =
 
     member x.Zero() = x.Return ()
 
+    member x.For(sequence, f) =
+        fun (cmgr: ConnectionManager) ->
+            let folder result element = 
+                try
+                    match result with
+                    | Commit() -> f element cmgr
+                    | Rollback a -> Rollback a
+                    | Failed ex -> Failed ex
+                with ex -> Failed ex
+
+            sequence 
+            |> Seq.fold folder (Commit())
+
     member x.TryFinally(m: ConnectionManager -> TxResult<_,_>, f: unit -> unit) = 
         fun (cmgr: ConnectionManager) ->
             try

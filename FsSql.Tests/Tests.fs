@@ -781,3 +781,29 @@ let ``tx monad composable`` () =
     | Tx.Commit a -> Assert.AreEqual(2L, countUsers c)
     | Tx.Rollback a -> raise <| Exception("Transaction should not have failed")
     | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
+
+[<Test;Parallelizable>]
+let ``tx monad for`` () = 
+    let c = withMemDb()
+    let tran() = tx {
+        for i in 1..50 do
+            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",i);P("@name", "juan")]
+    }
+    let result = tran() c
+    match result with
+    | Tx.Commit a -> Assert.AreEqual(50L, countUsers c)
+    | Tx.Rollback a -> failwith "Transaction should not have failed"
+    | Tx.Failed e -> raise <| Exception("Transaction should not have failed", e)
+
+[<Test;Parallelizable>]
+let ``tx monad for with error`` () =
+    let c = withMemDb()
+    let tran() = tx {
+        for i in 1..50 do
+            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",1);P("@name", "juan")]
+    }
+    let result = tran() c
+    match result with
+    | Tx.Failed e -> Assert.AreEqual(0L, countUsers c)
+    | _ -> failwith "Transaction should have failed"
+    ()
