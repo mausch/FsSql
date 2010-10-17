@@ -23,3 +23,6 @@ let getOrDefault =
     function
     | None -> Unchecked.defaultof<'a>
     | Some x -> x
+
+let fromBool b = 
+    if b then Some() else None

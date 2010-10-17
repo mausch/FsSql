@@ -809,3 +809,21 @@ let ``tx monad for with error`` () =
     | Tx.Failed e -> Assert.AreEqual(0L, countUsers c)
     | _ -> failwith "Transaction should have failed"
     ()
+
+(*
+[<Test;Parallelizable>]
+let ``tx monad while`` () =
+    let c = withMemDb()
+    let tran() = tx {
+        let i = ref 0
+        while !i < 50 do
+            printfn "%d" !i
+            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",i);P("@name", "juan")]
+            incr i
+    }
+    let result = tran() c
+    match result with
+    | Tx.Commit a -> Assert.AreEqual(50L, countUsers c)
+    | Tx.Rollback a -> failwith "Transaction should not have failed"
+    | Tx.Failed e -> failwithe e "Transaction should not have failed"
+*)

@@ -129,6 +129,14 @@ type TransactionBuilder() =
         let dispose() = (a :> IDisposable).Dispose()
         x.TryFinally(f a, dispose)
 
+(*
+    member x.While(cond: unit -> bool, m: ConnectionManager -> TxResult<_,_>) = 
+        //let s = Seq.initInfinite (fun _ -> cond()) |> Seq.takeWhile id
+        let s = Seq.unfold (fun s -> if cond() then Some((),s) else None) (Some())
+        let f i c = m c
+        x.For(s, f)
+*)
+
     member x.Run (f: ConnectionManager -> TxResult<'a,_>) =         
         let subscribe (tx: IDbTransaction) (onCommit: IDbTransaction -> 'a -> TxResult<'a,_>) = 
             let r = f (withTransaction tx)
