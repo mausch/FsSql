@@ -683,6 +683,9 @@ let ``tx monad error`` () =
         printfn "Error: %A" e
     | _ -> Assert.Fail("Transaction should have failed")
 
+let txInsert id = 
+    Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",id);P("@name", "juan")]
+
 [<Test;Parallelizable>]
 let ``tx monad error rollback`` () = 
     let c = withMemDb()
@@ -701,11 +704,9 @@ let ``tx monad error rollback`` () =
 [<Test;Parallelizable>]
 let ``tx monad ok`` () = 
     let c = withMemDb()
-    let insert (id: int) (name: string) = 
-        Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",id);P("@name", name)]
     let tran() = tx {
-        let! x = insert 3 "juan"
-        let! x = insert 4 "jorge"
+        do! txInsert 3 
+        do! txInsert 4
         return 8
     }
     let result = tran() c // execute transaction
@@ -719,7 +720,7 @@ let ``tx monad ok`` () =
 let ``tx monad using`` () = 
     let c = withMemDb()
     let tran() = tx {
-        do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+        do! txInsert 3
         use! reader = Tx.execReader "select * from person" []
         let id = 
             reader 
@@ -738,7 +739,7 @@ let ``tx monad using`` () =
 let ``tx monad rollback and zero`` () = 
     let c = withMemDb()
     let tran() = tx {
-        do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+        do! txInsert 3
         if 1 = 1
             then do! Tx.rollback 4
         return 0
@@ -756,7 +757,7 @@ let ``tx monad tryfinally`` () =
     let finallyRun = ref false
     let tran() = tx {
         try
-            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+            do! txInsert 3
             failwith "Error!"
         finally
             finallyRun := true
@@ -772,11 +773,11 @@ let ``tx monad tryfinally`` () =
 let ``tx monad composable`` () =
     let c = withMemDb()
     let tran1() = tx {
-        do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+        do! txInsert 3
     }
     let tran() = tx {
         do! tran1()
-        do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",4);P("@name", "john")]
+        do! txInsert 4
     }
     let result = tran() c
     match result with
@@ -789,7 +790,7 @@ let ``tx monad for`` () =
     let c = withMemDb()
     let tran() = tx {
         for i in 1..50 do
-            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",i);P("@name", "juan")]
+            do! txInsert i
     }
     let result = tran() c
     match result with
@@ -802,7 +803,7 @@ let ``tx monad for with error`` () =
     let c = withMemDb()
     let tran() = tx {
         for i in 1..50 do
-            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",1);P("@name", "juan")]
+            do! txInsert 1
     }
     let result = tran() c
     match result with
@@ -833,11 +834,11 @@ let ``tx monad trywith``() =
     let c = withMemDb()
     let tran() = tx {
         try
-            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",1);P("@name", "juan")]
+            do! txInsert 1
             failwith "bye"
-            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+            do! txInsert 2
         with e ->
-            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",2);P("@name", "juan")]
+            do! txInsert 3
     }
     let result = tran() c
     match result with
