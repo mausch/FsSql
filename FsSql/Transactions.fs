@@ -137,6 +137,13 @@ type TransactionBuilder() =
         x.For(s, f)
 *)
 
+    member x.TryWith(m, handler) = 
+        fun (cmgr: ConnectionManager) ->
+            match m cmgr with
+            | Commit a -> Commit a
+            | Rollback a -> Rollback a
+            | Failed e -> handler e cmgr            
+
     member x.Run (f: ConnectionManager -> TxResult<'a,_>) =         
         let subscribe (tx: IDbTransaction) (onCommit: IDbTransaction -> 'a -> TxResult<'a,_>) = 
             let r = f (withTransaction tx)

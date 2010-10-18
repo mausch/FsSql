@@ -827,3 +827,21 @@ let ``tx monad while`` () =
     | Tx.Rollback a -> failwith "Transaction should not have failed"
     | Tx.Failed e -> failwithe e "Transaction should not have failed"
 *)
+
+[<Test;Parallelizable>]
+let ``tx monad trywith``() =
+    let c = withMemDb()
+    let tran() = tx {
+        try
+            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",1);P("@name", "juan")]
+            failwith "bye"
+            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+        with e ->
+            do! Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",2);P("@name", "juan")]
+    }
+    let result = tran() c
+    match result with
+    | Tx.Commit a -> Assert.AreEqual(2L, countUsers c)
+    | Tx.Rollback a -> failwith "Transaction should not have failed"
+    | Tx.Failed e -> failwithe e "Transaction should not have failed"
+    
