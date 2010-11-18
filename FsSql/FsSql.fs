@@ -306,16 +306,16 @@ let mapOne mapper datareader =
     |> map mapper
     |> Enumerable.Single
 
-/// Maps a record as a sequence of name,value
+/// Maps a row as a sequence of name,value
 let asNameValue (r: IDataRecord) =
     let names = {0..r.FieldCount-1} |> Seq.map r.GetName
     let values = {0..r.FieldCount-1} |> Seq.map r.GetValue
     Seq.zip names values
 
-/// Maps a record as a Map of name,value
+/// Maps a row as a Map of name,value
 let asMap r = r |> asNameValue |> Map.ofSeq
 
-/// Maps a record as a dictionary of name,value
+/// Maps a row as a dictionary of name,value
 let asDict r = 
     let values = r |> asNameValue
     let d = Dictionary(StringComparer.InvariantCultureIgnoreCase)
@@ -323,34 +323,34 @@ let asDict r =
         d.Add(k,v)
     d
 
-/// Maps a single field (with position i) from a record.
+/// Maps a single field (with position i) from a row.
 let asScalari<'a> (i: int) (r: IDataRecord): 'a = 
     let v = Option.fromDBNull r.[i]
     FSharpValue.UnwrapOptionT<'a> v
 
-/// Maps the first field from a record
+/// Maps the first field from a row
 let asScalar r = asScalari 0 r
 
-/// Maps the first 2 fields from a record as a tuple
+/// Maps the first 2 fields from a row as a tuple
 let asPair<'a,'b> = 
     let s1 = asScalari<'a> 0
     let s2 = asScalari<'b> 1
     fun r -> s1 r, s2 r
 
-/// Maps the first 2 fields from a record as a tuple
+/// Maps the first 2 fields from a row as a tuple
 let asTuple2<'a,'b> : IDataRecord -> 'a * 'b = asPair
 
-/// Maps the first 3 fields from a record as a tuple
+/// Maps the first 3 fields from a row as a tuple
 let asTriple<'a,'b,'c> = 
     let s1 = asScalari<'a> 0
     let s2 = asScalari<'b> 1
     let s3 = asScalari<'c> 2
     fun r -> s1 r, s2 r, s3 r
 
-/// Maps the first 3 fields from a record as a tuple
+/// Maps the first 3 fields from a row as a tuple
 let asTuple3<'a,'b,'c> : IDataRecord -> 'a * 'b * 'c = asTriple
 
-/// Maps the first 4 fields from a record as a tuple
+/// Maps the first 4 fields from a row as a tuple
 let asTuple4<'a,'b,'c,'d> = 
     let s1 = asScalari<'a> 0
     let s2 = asScalari<'b> 1
