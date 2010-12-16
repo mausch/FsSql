@@ -13,8 +13,6 @@ open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Reflection
 
 let P = Sql.Parameter.make
-let failwithe (e: #exn) msg = raise <| Exception(msg, e)
-let failwithef (e: #exn) = Printf.kprintf (failwithe e)
 
 [<Test>]
 let catchtest() =
