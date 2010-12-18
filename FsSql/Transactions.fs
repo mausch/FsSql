@@ -125,8 +125,8 @@ type TransactionBuilder() =
             finally
                 f()
 
-    member x.Using(a, f) = 
-        let dispose() = (a :> IDisposable).Dispose()
+    member x.Using(a: #IDisposable, f) = 
+        let dispose() = if a <> null then a.Dispose()
         x.TryFinally(f a, dispose)
 
 (*
