@@ -4,7 +4,6 @@ open System
 open System.Collections.Generic
 open System.Data
 open System.Data.SqlClient
-open System.Linq
 open System.Reflection
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
@@ -304,7 +303,7 @@ let mapFirst mapper datareader =
 let mapOne mapper datareader =
     datareader
     |> map mapper
-    |> Enumerable.Single
+    |> Seq.head
 
 /// Maps a row as a sequence of name,value
 let asNameValue (r: IDataRecord) =
@@ -386,7 +385,7 @@ let asRecord<'a> =
         FSharpValue.UnwrapOption p.PropertyType (Option.fromDBNull y)
     fun (prefix: string) ->
         let addPrefix n = 
-            if String.IsNullOrWhiteSpace prefix
+            if String.IsNullOrEmpty prefix
                 then n
                 else sprintf "%s_%s" prefix n
         let fieldNamesWithPrefix = fieldNames |> Array.map addPrefix

@@ -61,11 +61,10 @@ let SqlClientAsyncOps =
 let FakeAsyncOps = 
     { new IAsyncOps with
         member x.execNonQuery cmd = 
-            let e = Func<_>(cmd.ExecuteNonQuery)
-            Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel)
+            async { return cmd.ExecuteNonQuery() }
         member x.execReader cmd = 
-            let e = Func<_>(cmd.ExecuteReader)
-            Async.FromBeginEnd(e.BeginInvoke, e.EndInvoke, cmd.Cancel) }
+            async { return cmd.ExecuteReader() }
+    }
 
 AsyncOpsRegistry.Add(typeof<SqlCommand>, SqlClientAsyncOps)
 

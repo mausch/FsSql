@@ -11,6 +11,7 @@
     <AssemblyName>FsSql.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>FsSql.Tests</Name>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -42,28 +43,31 @@
     <None Include="Samples.fsx" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="FSharp.PowerPack, Version=1.9.9.9, Culture=neutral, PublicKeyToken=a19089b1c74d0809" />
-    <Reference Include="FSharp.PowerPack.Parallel.Seq, Version=1.9.9.9, Culture=neutral, PublicKeyToken=a19089b1c74d0809" />
+    <Reference Include="FSharp.PowerPack">
+      <HintPath>C:\Program Files (x86)\FSharpPowerPack-2.0.0.0\bin\FSharp.PowerPack.dll</HintPath>
+    </Reference>
+    <Reference Include="FSharp.PowerPack.Parallel.Seq">
+      <HintPath>C:\Program Files (x86)\FSharpPowerPack-2.0.0.0\bin\FSharp.PowerPack.Parallel.Seq.dll</HintPath>
+    </Reference>
     <Reference Include="Gallio">
-      <HintPath>C:\prg\FsSql\lib\Gallio.dll</HintPath>
+      <HintPath>..\lib\Gallio.dll</HintPath>
     </Reference>
     <Reference Include="MbUnit">
-      <HintPath>C:\prg\FsSql\lib\MbUnit.dll</HintPath>
+      <HintPath>..\lib\MbUnit.dll</HintPath>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core" />
     <Reference Include="System" />
-    <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Data.SQLite">
-      <HintPath>C:\prg\FsSql\lib\System.Data.SQLite.DLL</HintPath>
+      <HintPath>..\lib\System.Data.SQLite.DLL</HintPath>
     </Reference>
-    <Reference Include="System.Numerics" />
     <ProjectReference Include="..\FsSql\FsSql.fsproj">
       <Name>FsSql</Name>
       <Project>{f2570da4-5df1-4d5e-9534-b3f55606b3b5}</Project>
       <Private>True</Private>
     </ProjectReference>
+    <Reference Include="System.Numerics" />
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.
