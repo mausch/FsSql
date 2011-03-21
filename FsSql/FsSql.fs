@@ -289,6 +289,9 @@ let asyncExecSPScalar a b c =
 let map mapper datareader =
     datareader |> Seq.ofDataReader |> Seq.map mapper
 
+/// Executes a query and maps the result
+let execReaderWith connMgr sql param mapper = execReader connMgr sql param |> map mapper
+
 /// Maps a datareader's first row
 let mapFirst mapper datareader =
     let r = datareader 
