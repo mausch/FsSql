@@ -1,4 +1,5 @@
-﻿module Sql
+﻿[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
+module Sql
 
 open System
 open System.Collections.Generic

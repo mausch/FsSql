@@ -14,11 +14,8 @@ let openConn() =
 let connMgr = Sql.withNewConnection openConn
 
 // partial application of various common functions, around the connection manager
-let execScalar sql = Sql.execScalar connMgr sql
-let execReader sql = Sql.execReader connMgr sql
-let execReaderf sql = Sql.execReaderF connMgr sql
-let execNonQueryf sql = Sql.execNonQueryF connMgr sql
-let exec a = Sql.execNonQuery connMgr a [] |> ignore
+let sql = SqlWrapper(connMgr)
+let exec a = sql.ExecNonQuery a [] |> ignore
 let P = Sql.Parameter.make
 
 // create the schema
@@ -51,7 +48,7 @@ let insertNUsers2 n = insertNUsers n |> Tx.transactional
 insertNUsers2 50 connMgr
 
 let countUsers(): int64 =
-    execScalar "select count(*) from user" [] |> Option.get
+    sql.ExecScalar "select count(*) from user" [] |> Option.get
 
 printfn "%d users" (countUsers())
 
@@ -64,11 +61,11 @@ let printUser (dr: IDataRecord) =
         | Some x -> x
     printfn "Id: %d; Name: %s; Address: %s" id name address
 
-execReader "select * from user" []
+sql.ExecReader "select * from user" []
 |> Seq.ofDataReader
 |> Seq.iter printUser
 
-execNonQueryf "delete from user where id > %d" 10 |> ignore
+sql.ExecNonQueryF "delete from user where id > %d" 10 |> ignore
 
 printfn "Now there are %d users" (countUsers()) // will print 10
 
@@ -87,7 +84,7 @@ let asUser (r: #IDataRecord) =
 let asUser2 r = Sql.asRecord<User> "" r
 
 // get the first user
-let firstUser = execReader "select * from user limit 1" [] |> Sql.mapOne asUser 
+let firstUser = sql.ExecReader "select * from user limit 1" [] |> Sql.mapOne asUser 
 
 printfn "first user's name: %s" firstUser.name
 printfn "first user does%s have an address" (if firstUser.address.IsNone then " not" else "")
@@ -102,7 +99,7 @@ type Animal = {
 
 let insertAnimal (animal: Animal) = 
     let toNull = function Some x -> x.ToString() | _ -> "null"
-    execNonQueryf
+    sql.ExecNonQueryF
         "insert into animal (id, name, animalType, owner) values (%d, %s, %s, %s)"
         animal.id animal.name animal.animalType (toNull animal.owner) |> ignore
 
@@ -119,7 +116,7 @@ let innerJoinSql = sprintf "select %s,%s from user u join animal a on a.owner = 
                       (Sql.recordFieldsAlias typeof<User> "u")
                       (Sql.recordFieldsAlias typeof<Animal> "a")
 
-execReader innerJoinSql []
+sql.ExecReader innerJoinSql []
 |> Sql.map asUserWithAnimal
 |> Seq.groupByFst
 |> Seq.iter (fun (person, animals) ->
@@ -133,7 +130,7 @@ let asUserWithOptionalAnimal (r: #IDataRecord) =
 let leftJoinSql = sprintf "select %s,%s from user u left join animal a on a.owner = u.id" 
                      (Sql.recordFieldsAlias typeof<User> "u")
                      (Sql.recordFieldsAlias typeof<Animal> "a")
-execReader leftJoinSql []
+sql.ExecReader leftJoinSql []
 |> Sql.map asUserWithOptionalAnimal
 |> Seq.groupByFst
 |> Seq.chooseSnd
