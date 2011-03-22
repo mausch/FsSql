@@ -1,0 +1,16 @@
+*FsSql* provides a functional interface to ADO.NET for F# applications.
+
+Features: 
+* Connection management
+* DBNull <-> option type conversion
+* Async calls
+* Composable J2EE-like transaction modifiers
+* Transaction computation expression
+* Composable mapping functions
+ 
+And, of course, everything ADO.NET does, in an idiomatic, functional, way.
+
+For general usage, see:
+* "A functional wrapper over ADO.NET":http://bugsquash.blogspot.com/2010/10/functional-wrapper-over-adonet.html
+* "A functional wrapper over ADO.NET (part 2)":http://bugsquash.blogspot.com/2010/10/functional-wrapper-over-adonet-part-2.html
+* "Sample code":https://github.com/mausch/FsSql/blob/master/FsSql.Tests/Samples.fsx
