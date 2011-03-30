@@ -1,12 +1,14 @@
 ﻿#r "bin\debug\FsSql.dll"
 #r "bin\debug\System.Data.SQlite.dll"
+#r "bin\debug\MySql.Data.dll"
 
 open System
 open System.Data
 
 // a function that opens a connection
 let openConn() =
-    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True;")
+    //let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True;")
+    let conn = new MySql.Data.MySqlClient.MySqlConnection("server=localhost;user=root;database=fssqltest;port=3306;password=root;")
     conn.Open()
     conn :> IDbConnection
 
@@ -20,9 +22,9 @@ let P = Sql.Parameter.make
 
 // create the schema
 exec "drop table if exists user"
-exec "create table user (id int primary key not null, name varchar not null, address varchar null)"
+exec "create table user (id int not null primary key, name varchar(255) not null, address varchar(255) null)"
 exec "drop table if exists animal"
-exec "create table animal (id int primary key not null, name varchar not null, owner int null, animalType varchar not null)"
+exec "create table animal (id int not null primary key, name varchar(255) not null, owner int null, animalType varchar(255) not null)"
 
 // a function that inserts a record
 let insertUser connMgr (id: int) (name: string) (address: string option) = 
@@ -98,10 +100,10 @@ type Animal = {
 }
 
 let insertAnimal (animal: Animal) = 
-    let toNull = function Some x -> x.ToString() | _ -> "null"
-    sql.ExecNonQueryF
-        "insert into animal (id, name, animalType, owner) values (%d, %s, %s, %s)"
-        animal.id animal.name animal.animalType (toNull animal.owner) |> ignore
+    sql.ExecNonQuery
+        "insert into animal (id, name, animalType, owner) values (@id, @name, @animalType, @owner)"
+        (Sql.parameters ["@id",box animal.id; "@name",box animal.name; "@animalType",box animal.animalType; "@owner", box animal.owner])
+        |> ignore
 
 // inserting sample data
 insertAnimal {id = 1; name = "Seymour"; animalType = "dog"; owner = Some 1}
