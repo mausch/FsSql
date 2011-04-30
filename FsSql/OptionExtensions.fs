@@ -13,16 +13,12 @@ let fromDBNull (o: obj): 'a option =
         raise <| InvalidCastException(msg, e)
 
 /// Maps None to DBNull, otherwise the option's value
-let toDBNull =
-    function
-    | None -> box DBNull.Value
-    | Some x -> box x
+let toDBNull x =
+    defaultArg x (box DBNull.Value)
 
 /// Maps None to a default value, otherwise the option's value
-let getOrDefault =
-    function
-    | None -> Unchecked.defaultof<'a>
-    | Some x -> x
+let getOrDefault x =
+    defaultArg x Unchecked.defaultof<'a>
 
 let fromBool b = 
     if b then Some() else None
