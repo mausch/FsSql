@@ -84,18 +84,20 @@ let transactional2 f (cmgr: ConnectionManager) =
 
 //type M<'a,'b> = ConnectionManager -> TxResult<'a,'b>
 
+let bind f m =
+    fun (cmgr: ConnectionManager) ->
+        try
+            match m cmgr with
+            | Commit a -> f a cmgr
+            | Rollback a -> Rollback a
+            | Failed e -> Failed e
+        with e -> 
+            Failed e
+
 type TransactionBuilder() =
     member x.Delay f = f()
 
-    member x.Bind(m, f) =
-        fun (cmgr: ConnectionManager) ->
-            try
-                match m cmgr with
-                | Commit a -> f a cmgr
-                | Rollback a -> Rollback a
-                | Failed e -> Failed e
-            with e -> 
-                Failed e
+    member x.Bind(m, f) = bind f m
 
     member x.Combine(m1, m2) = 
         x.Bind(m1, fun() -> m2)
