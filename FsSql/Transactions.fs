@@ -188,6 +188,11 @@ let execNonQueryi sql parameters mgr =
 let execReader sql parameters mgr = 
     Sql.execReader mgr sql parameters |> Commit
 
+/// Executes a query and returns a scalar.
+/// For use within a tx monad.
+let execScalar sql parameters mgr = 
+    Sql.execScalar mgr sql parameters |> Commit
+
 /// Rolls back the transaction.
 /// For use within a tx monad.
 let rollback a (mgr: ConnectionManager) = Rollback a
