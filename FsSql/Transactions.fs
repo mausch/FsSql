@@ -205,3 +205,9 @@ let map f m =
         | Commit a -> f a |> Commit
         | Failed x -> Failed x
         | Rollback x -> Rollback x
+
+let getOrFail f =
+    function
+    | Commit x -> f x
+    | Failed e -> raise (Exception("", e))
+    | Rollback _ -> failwith "rollback"
