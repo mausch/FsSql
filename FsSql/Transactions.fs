@@ -196,3 +196,9 @@ let execScalar sql parameters mgr =
 /// Rolls back the transaction.
 /// For use within a tx monad.
 let rollback a (mgr: ConnectionManager) = Rollback a
+
+let map f = 
+    function
+    | Commit a -> f a |> Commit
+    | Failed x -> Failed x
+    | Rollback x -> Rollback x
