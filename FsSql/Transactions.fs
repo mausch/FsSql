@@ -30,17 +30,15 @@ let transactional a =
 
 /// If there is a running transaction, the function executes within this transaction.
 /// Otherwise, throws.
-let mandatory f cmgr =
-    let _,_,tx = cmgr
-    match tx with
+let mandatory f (cmgr: ConnectionManager) =
+    match cmgr.tx with
     | Some _ -> f cmgr
     | None -> failwith "Transaction required!"
 
 /// If there is a running transaction, throws.
 /// Otherwise, the function executes without any transaction.
-let never f cmgr =
-    let _,_,tx = cmgr
-    match tx with
+let never f (cmgr: ConnectionManager) =
+    match cmgr.tx with
     | Some _ -> failwith "Transaction present!"
     | None -> f cmgr
 
