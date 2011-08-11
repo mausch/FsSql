@@ -50,10 +50,9 @@ let supported f cmgr = f cmgr
 
 /// If there is a running transaction, the function executes within this transaction.
 /// Otherwise, a new transaction is started and the function executes within this new transaction.
-let required f cmgr = 
-    let _,_,tx = cmgr
+let required f (cmgr: ConnectionManager) = 
     let g = 
-        match tx with
+        match cmgr.tx with
         | None -> transactional
         | _ -> id
     (g f) cmgr
@@ -166,8 +165,7 @@ type TransactionBuilder() =
             subscribe tx onCommit
 
         fun cmgr -> 
-            let _,_,tx = cmgr
-            match tx with
+            match cmgr.tx with
             | None -> doWithConnection cmgr transactional
             | Some t -> subscribe t (fun _ -> Commit)
 

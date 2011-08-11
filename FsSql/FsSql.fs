@@ -13,7 +13,11 @@ open FsSqlPrelude
 open FsSql.Async
 
 /// Encapsulates how to create and dispose a database connection
-type ConnectionManager = (unit -> IDbConnection) * (IDbConnection -> unit) * (IDbTransaction option)
+type ConnectionManager = {
+    create: unit -> IDbConnection
+    dispose: IDbConnection -> unit
+    tx: IDbTransaction option
+}
 
 /// Creates a <see cref="ConnectionManager"/> with an externally-owned connection
 let withConnection (conn: IDbConnection) : ConnectionManager =
@@ -22,7 +26,7 @@ let withConnection (conn: IDbConnection) : ConnectionManager =
         logf "creating connection from const %s" id
         conn
     let dispose c = logf "disposing connection (but not really) %s" id
-    create,dispose,None
+    { create = create; dispose = dispose; tx = None }
 
 /// Creates a <see cref="ConnectionManager"/> with an externally-owned transaction
 let withTransaction (tx: IDbTransaction): ConnectionManager =
@@ -31,7 +35,7 @@ let withTransaction (tx: IDbTransaction): ConnectionManager =
         logf "creating connection from const %s" id
         tx.Connection
     let dispose c = logf "disposing connection (but not really) %s" id
-    create,dispose,Some tx
+    { create = create; dispose = dispose; tx = Some tx }
 
 /// Creates a <see cref="ConnectionManager"/> with an owned connection
 let withNewConnection (create: unit -> IDbConnection) : ConnectionManager = 
@@ -42,15 +46,14 @@ let withNewConnection (create: unit -> IDbConnection) : ConnectionManager =
     let dispose (c: IDisposable) = 
         c.Dispose()
         logf "disposing connection %s" id
-    create,dispose,None
+    { create = create; dispose = dispose; tx = None }
 
 let internal withCreateConnection (create: unit -> IDbConnection) : ConnectionManager = 
     let dispose x = ()
-    create,dispose,None
+    { create = create; dispose = dispose; tx = None }
 
 let internal doWithConnection (cmgr: ConnectionManager) f =
-    let create,dispose,_ = cmgr
-    withResource create dispose f
+    withResource cmgr.create cmgr.dispose f
     
 let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
     if not (FSharpType.IsFunction typeof<'a>) then
@@ -96,8 +99,7 @@ let internal sqlProcessor (cmgr: ConnectionManager) (withCmd: IDbCommand -> IDbC
     let sqlProcessor' (conn: IDbConnection) = 
         use cmd = conn.CreateCommand()
         cmd.CommandText <- sql
-        let _,_,tx = cmgr
-        cmd.Transaction <- Option.getOrDefault tx
+        cmd.Transaction <- Option.getOrDefault cmgr.tx
         let createParam i (p: obj) =
             let param = cmd.CreateParameter()
             //param.DbType <- DbType.
@@ -109,11 +111,10 @@ let internal sqlProcessor (cmgr: ConnectionManager) (withCmd: IDbCommand -> IDbC
     doWithConnection cmgr sqlProcessor'
 
 let internal sqlProcessorToDataReader (cmgr: ConnectionManager) b = 
-    let create,dispose,_ = cmgr
     let exec (cmd: IDbCommand) (conn: IDbConnection) = 
-        let dispose() = dispose conn
+        let dispose() = cmgr.dispose conn
         new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
-    sqlProcessor (withCreateConnection create) exec b
+    sqlProcessor (withCreateConnection cmgr.create) exec b
 
 let internal sqlProcessorNonQuery a b =
     let exec (cmd: IDbCommand) x = 
@@ -154,11 +155,10 @@ let addParameter (cmd: #IDbCommand) (p: Parameter) =
 
 /// Creates an IDbCommand
 let createCommand (cmgr: ConnectionManager) = 
-    let create,dispose,tx = cmgr
-    let conn = create()
+    let conn = cmgr.create()
     let cmd = conn.CreateCommand()
-    cmd.Transaction <- Option.getOrDefault tx
-    let dispose () = dispose conn
+    cmd.Transaction <- Option.getOrDefault cmgr.tx
+    let dispose () = cmgr.dispose conn
     new DbCommandWrapper(cmd, dispose) :> IDbCommand
 
 let internal prepareCommand (connection: #IDbConnection) (tx: IDbTransaction option) (sql: string) (cmdType: CommandType) (parameters: #seq<Parameter>) =
@@ -181,12 +181,11 @@ let paramsFromDict (p: #IDictionary<string, obj>) =
 
 /// Executes and returns a data reader
 let internal execReaderInternal (exec: IDbCommand -> (unit -> unit) -> 'a) cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
-    let create,dispose,tx = cmgr
-    let connection = create()
-    let cmd = prepareCommand connection tx sql cmdType parameters
+    let connection = cmgr.create()
+    let cmd = prepareCommand connection cmgr.tx sql cmdType parameters
     let dispose() = 
         cmd.Dispose()
-        dispose connection
+        cmgr.dispose connection
     exec cmd dispose
 
 let internal execReaderWrap (cmd: #IDbCommand) dispose = 
@@ -214,8 +213,7 @@ let asyncExecSPReader connMgr = execReaderInternal execReaderAsyncWrap CommandTy
 /// Executes and returns the number of rows affected
 let internal execNonQueryInternal (exec: IDbCommand -> 'a) cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let execNonQuery' connection = 
-        let _,_,tx = cmgr
-        use cmd = prepareCommand connection tx sql cmdType parameters
+        use cmd = prepareCommand connection cmgr.tx sql cmdType parameters
         exec cmd
     doWithConnection cmgr execNonQuery'
 
