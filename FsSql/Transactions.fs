@@ -93,6 +93,9 @@ let bind f m =
         with e -> 
             Failed e
 
+let inline mreturn a = 
+    fun (cmgr: ConnectionManager) -> Commit a
+
 type TransactionBuilder() =
     member x.Delay f = f()
 
@@ -101,8 +104,7 @@ type TransactionBuilder() =
     member x.Combine(m1, m2) = 
         x.Bind(m1, fun() -> m2)
 
-    member x.Return a = 
-        fun (cmgr: ConnectionManager) -> Commit a
+    member x.Return a = mreturn a
 
     member x.Zero() = x.Return ()
 
@@ -197,8 +199,9 @@ let execScalar sql parameters mgr =
 /// For use within a tx monad.
 let rollback a (mgr: ConnectionManager) = Rollback a
 
-let map f = 
-    function
-    | Commit a -> f a |> Commit
-    | Failed x -> Failed x
-    | Rollback x -> Rollback x
+let map f m = 
+    fun (conn: ConnectionManager) ->
+        match m conn with
+        | Commit a -> f a |> Commit
+        | Failed x -> Failed x
+        | Rollback x -> Rollback x
