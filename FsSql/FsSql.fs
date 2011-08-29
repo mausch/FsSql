@@ -258,7 +258,7 @@ let mapScalar (dr: #IDataReader) =
     try
         if dr.Read()
             then Option.fromDBNull dr.[0]
-            else failwith "No results"
+            else failwith "No results trying to get a scalar from datareader"
     finally
         dr.Dispose()
 
