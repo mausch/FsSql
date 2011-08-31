@@ -209,3 +209,8 @@ let get =
     | Commit x -> x
     | Failed e -> raise (Exception("Transaction failed", e))
     | Rollback _ -> failwith "rollback"
+
+let toOption =
+    function
+    | Commit x -> Some x
+    | _ -> None
