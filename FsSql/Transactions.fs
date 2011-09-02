@@ -94,13 +94,15 @@ let bind f m =
 let inline mreturn a = 
     fun (cmgr: ConnectionManager) -> Commit a
 
+let inline combine m2 m1 =
+    m1 |> bind (fun _ -> m2)
+
 type TransactionBuilder() =
     member x.Delay f = f()
 
     member x.Bind(m, f) = bind f m
 
-    member x.Combine(m1, m2) = 
-        x.Bind(m1, fun() -> m2)
+    member x.Combine(m1, m2) = combine m2 m1
 
     member x.Return a = mreturn a
 
