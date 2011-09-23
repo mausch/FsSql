@@ -843,3 +843,11 @@ let ``tx monad trywith``() =
     | Tx.Commit a -> Assert.AreEqual(2L, countUsers c)
     | Tx.Rollback a -> failwith "Transaction should not have failed"
     | Tx.Failed e -> failwithe e "Transaction should not have failed"
+
+[<Test;Parallelizable>]
+let ``tx then no tx``() =
+    let c = withMemDb()
+    let t = txInsert 1 |> Tx.required >> Tx.get
+    t c
+    let l = Sql.execReader c "select * from person" [] |> List.ofDataReader
+    Assert.AreEqual(1, l.Length)
