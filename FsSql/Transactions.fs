@@ -216,3 +216,7 @@ let toOption =
     function
     | Commit x -> Some x
     | _ -> None
+
+module Operators = 
+    let inline (>>=) f x = bind x f
+    let inline (>>.) x f = bind (fun _ -> x) f
