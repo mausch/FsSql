@@ -219,4 +219,4 @@ let toOption =
 
 module Operators = 
     let inline (>>=) f x = bind x f
-    let inline (>>.) x f = bind (fun _ -> x) f
+    let inline (>>.) f x = bind (fun _ -> x) f
