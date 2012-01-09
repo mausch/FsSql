@@ -6,7 +6,7 @@
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{ffae1f80-4c7c-4f58-9077-838c4265eed6}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <RootNamespace>FsSql.Tests</RootNamespace>
     <AssemblyName>FsSql.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
@@ -40,6 +40,7 @@
     <Compile Include="Tests.fs" />
     <Compile Include="NorthwindTests.fs" />
     <Compile Include="AdventureWorksTests.fs" />
+    <Compile Include="main.fs" />
     <None Include="Samples.fsx" />
   </ItemGroup>
   <ItemGroup>
@@ -48,6 +49,12 @@
     </Reference>
     <Reference Include="FSharp.PowerPack.Parallel.Seq">
       <HintPath>C:\Program Files (x86)\FSharpPowerPack-2.0.0.0\bin\FSharp.PowerPack.Parallel.Seq.dll</HintPath>
+    </Reference>
+    <Reference Include="Fuchu">
+      <HintPath>..\lib\Fuchu.dll</HintPath>
+    </Reference>
+    <Reference Include="Fuchu.TDNet">
+      <HintPath>..\lib\Fuchu.TDNet.dll</HintPath>
     </Reference>
     <Reference Include="Gallio">
       <HintPath>..\lib\Gallio.dll</HintPath>

@@ -14,14 +14,12 @@ open Microsoft.FSharp.Reflection
 
 let P = Sql.Parameter.make
 
-[<Test>]
 let catchtest() =
     let f a b = a/b
     let g = catch 7 (f 10)
     let x = g 0
     Assert.AreEqual(7, x)
     assertThrows<DivideByZeroException>(fun () -> f 10 0 |> ignore)
-    ()
 
 let createConnection() =
     let conn = new System.Data.SQLite.SQLiteConnection("Data Source=:memory:;Version=3;New=True")
@@ -134,75 +132,31 @@ let deleteUserWithCommand (id: int) =
 
 let insertThenGet conn = 
     insertUser conn {id = 1; name = "pepe"; parent = None}
-    printfn "count: %d" (countUsers conn)
+    Assert.AreEqual(1L, countUsers conn)
     let p = getUser conn 1
-    printfn "id=%d, name=%s" p.id p.name
-
-[<Test;Parallelizable>]
-let ``insert then get``() = 
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        insertThenGet conn)
-    ()
-
-[<Test>]
-let ``insert then get persistent`` () = 
-    insertThenGet (withNewDbFile())
+    Assert.AreEqual(1, p.id)
+    Assert.AreEqual("pepe", p.name)
 
 let findNonExistentRecord conn = 
     let p = findUser conn 39393
     Assert.IsTrue p.IsNone
-    printfn "end test"
-
-[<Test;Parallelizable>]
-let ``find non-existent record``() =
-    withDatabase (fun conn ->
-        findNonExistentRecord (Sql.withConnection conn))
-
-[<Test>]
-let ``find non-existent record persistent``() =
-    findNonExistentRecord (withNewDbFile())
 
 let findExistentRecord conn = 
     insertUser conn {id = 1; name = "pepe"; parent = None}
     let p = findUser conn 1
     Assert.IsTrue p.IsSome
-    printfn "end test"
-
-[<Test;Parallelizable>]
-let ``find existent record``() =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        findExistentRecord conn)
-
-[<Test>]
-let ``find existent record persistent``() =
-    findExistentRecord (withNewDbFile())
 
 let getMany conn = 
     for i in 1..50 do
         insertUser conn {id = i; name = "pepe" + i.ToString(); parent = None}
     let first10 = Sql.execReaderF conn "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
     for i in first10 do
-        printfn "%d" (i?id).Value
-    printfn "end!"
-
-[<Test;Parallelizable>]
-let ``get many``() =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        getMany conn)
-
-
-[<Test>]
-let ``get many persistent``() =
-    getMany (withNewDbFile())
+        logf "%d\n" (i?id).Value
 
 let someTranAndFail conn =
     insertUser conn {id = 1; name = "pepe"; parent = None}
     insertUser conn {id = 2; name = "jose"; parent = None}
     failwith "Bla"
-    ()
 
 let transactionWithException conn =
     let someTran = Tx.transactional someTranAndFail
@@ -210,38 +164,15 @@ let transactionWithException conn =
     someTran conn
     Assert.AreEqual(0L, countUsers conn)
 
-[<Test;Parallelizable>]
-let ``transaction with exception`` () =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        transactionWithException conn)
-    ()
-
-[<Test>]
-let ``transaction with exception persistent``() =
-    transactionWithException (withNewDbFile())
-
 let someTran conn =
     insertUser conn {id = 1; name = "pepe"; parent = None}
     insertUser conn {id = 2; name = "jose"; parent = None}
-    ()
 
 let transactionCommitted conn =
     let someTran conn = someTran conn
     let someTran = Tx.transactional someTran
     someTran conn
     Assert.AreEqual(2L, countUsers conn)
-
-[<Test;Parallelizable>]
-let ``transaction committed`` () =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        transactionCommitted conn)
-    ()
-
-[<Test>]
-let ``transaction committed persistent``() =
-    transactionCommitted (withNewDbFile())
 
 let someTranWithSubTran conn =
     let subtran conn = 
@@ -256,35 +187,14 @@ let nestedTransactionsAreNotSupported conn =
     let someTran = Tx.transactional someTranWithSubTran
     assertThrows<SQLiteException> (fun () -> someTran conn)
 
-[<Test;Parallelizable>]
-let ``nested transactions are NOT supported`` () =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        nestedTransactionsAreNotSupported conn)
-    ()
-
-[<Test>]
-let ``nested transactions are NOT supported persistent`` () =
-    nestedTransactionsAreNotSupported (withNewDbFile())
-
 let transactionWithOption conn =
     let someTran = Tx.transactional2 someTranAndFail
     let result = someTran conn
     match result with
     | Tx.Commit v -> failwith "transaction should have failed!"
     | Tx.Rollback v -> failwith "transaction should have failed!"
-    | Tx.Failed e -> printfn "Failed with exception %A" e
+    | Tx.Failed e -> () //printfn "Failed with exception %A" e
     Assert.AreEqual(0L, countUsers conn)
-
-[<Test;Parallelizable>]
-let ``transaction with option`` () =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        transactionWithOption conn)
-
-[<Test>]
-let ``transaction with option persistent``() =
-    transactionWithOption (withNewDbFile())
 
 // Tests whether n is prime - expects n > 1
 // From http://tomasp.net/blog/fsparallelops.aspx
@@ -294,14 +204,11 @@ let isPrime n =
     // try to divide n by 2..max (stops when divisor is found)
     not ({ 2..max } |> Seq.filter (fun d -> n%d = 0) |> Enumerable.Any)
 
-[<Test;Parallelizable>]
 let ``pseq isprime`` () =
     let p = {100000..800000}
             |> PSeq.filter isPrime
             |> PSeq.length
-
-    printfn "%d primes" p
-    ()
+    Assert.AreEqual(54359, p)
 
 let insertUsers conn =
     log "inserting"
@@ -322,36 +229,14 @@ let dataReaderIsParallelizable conn =
                     |> PSeq.length
     logf "%d primes" primes
 
-
-[<Test;Parallelizable>]
-let ``datareader is parallelizable`` () =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        dataReaderIsParallelizable conn)
-
-[<Test>]
-let ``datareader is parallelizable persistent``() =
-    dataReaderIsParallelizable(withNewDbFile())
-
 let dataReaderToSeqIsForwardOnly conn =
     insertUsers conn
     let all = Sql.execReader conn "select * from person" []
                 |> Seq.ofDataReader
-    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "id: %d\n" (r?id).Value)
     let secondIter() = 
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "name: %s\n" (r?name).Value)
     assertThrows<InvalidOperationException> secondIter
-
-[<Test;Parallelizable>]
-let ``datareader to seq is forward-only``() =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        dataReaderToSeqIsForwardOnly conn)
-
-[<Test>]
-let ``datareader to seq is forward-only persistent``() =
-    dataReaderToSeqIsForwardOnly (withNewDbFile())
-
 
 let dataReaderToSeqIsCacheable conn =
     insertUsers conn
@@ -359,18 +244,8 @@ let dataReaderToSeqIsCacheable conn =
     let all = Sql.execReader conn "select * from person" []
                 |> Seq.ofDataReader
                 |> Seq.cache
-    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
-    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
-
-[<Test;Parallelizable>]
-let ``datareader to seq is cacheable`` () =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        dataReaderToSeqIsCacheable conn)
-
-[<Test;Ignore("locks the database because it doesn't close the connection")>]
-let ``datareader to seq is cacheable persistent``() =
-    dataReaderToSeqIsCacheable (withNewDbFile())
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "id: %d\n" (r?id).Value)
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "name: %s\n" (r?name).Value)
 
 let dataReaderToSeqIsCacheable2 conn =
     insertUsers conn
@@ -378,20 +253,8 @@ let dataReaderToSeqIsCacheable2 conn =
     let all = reader
                 |> Seq.ofDataReader
                 |> Seq.cache
-    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
-    all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
-
-[<Test;Parallelizable>]
-let ``datareader to seq is cacheable 2`` () =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        dataReaderToSeqIsCacheable2 conn)
-
-
-[<Test>]
-let ``datareader to seq is cacheable 2 persistent`` () =
-    dataReaderToSeqIsCacheable2 (withNewDbFile())
-
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "id: %d\n" (r?id).Value)
+    all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "name: %s\n" (r?name).Value)
 
 let dataReaderToSeqIsCacheable3 conn =
     insertUsers conn
@@ -400,19 +263,9 @@ let dataReaderToSeqIsCacheable3 conn =
         let all = reader
                     |> Seq.ofDataReader
                     |> Seq.cache
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "id: %d\n" (r?id).Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "name: %s\n" (r?name).Value)
     using reader withReader
-
-[<Test;Parallelizable>]
-let ``datareader to seq is cacheable 3`` () =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        dataReaderToSeqIsCacheable3 conn)
-
-[<Test>]
-let ``datareader to seq is cacheable 3 persistent`` () =
-    dataReaderToSeqIsCacheable3 (withNewDbFile())
 
 let dataReaderWithLazyList conn =
     insertUsers conn
@@ -421,21 +274,10 @@ let dataReaderWithLazyList conn =
         let all = reader
                     |> Seq.ofDataReader
                     |> LazyList.ofSeq
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "id: %d" (r?id).Value)
-        all |> Seq.truncate 10 |> Seq.iter (fun r -> printfn "name: %s" (r?name).Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "id: %d\n" (r?id).Value)
+        all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "name: %s\n" (r?name).Value)
     using reader withReader
 
-[<Test;Parallelizable>]
-let ``datareader with lazylist`` () =
-    withDatabase (fun conn ->
-        let conn = Sql.withConnection conn
-        dataReaderWithLazyList conn)
-
-[<Test>]
-let ``datareader with lazylist persistent`` () =
-    dataReaderWithLazyList (withNewDbFile())
-
-[<Test>]
 let ``create command`` () = 
     let cmgr = withNewDbFile()
     use cmd = Sql.createCommand cmgr
@@ -444,7 +286,6 @@ let ``create command`` () =
     let r = cmd.ExecuteReader() |> List.ofDataReader
     Assert.AreEqual(0, r.Length)
 
-[<Test>]
 let ``async exec reader`` () = 
     let cmgr = withNewDbFile()
     async {
@@ -453,7 +294,7 @@ let ``async exec reader`` () =
         Assert.AreEqual(0, r.Length)
     } |> Async.RunSynchronously
 
-[<Test>]
+
 let ``duplicate field names are NOT supported``() =
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -467,7 +308,7 @@ let asAddress (r: IDataRecord) =
 let asPerson (r: IDataRecord) =
     {id = (r?p_id).Value; name = (r?p_name).Value; parent = r?p_parent}
 
-[<Test>]
+
 let ``inner join``() =
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -478,7 +319,7 @@ let ``inner join``() =
     let personFields = Sql.recordFieldsAlias typeof<Person> "p"
     let addressFields = Sql.recordFieldsAlias typeof<Address> "a"
     let sql = sprintf "select %s,%s from person p join address a on p.id = a.person" personFields addressFields
-    printfn "%s" sql
+    logf "%s\n" sql
 
     let asPersonWithAddresses (r: IDataRecord) =
         asPerson r, asAddress r
@@ -494,7 +335,7 @@ let ``inner join``() =
     Assert.AreEqual(5, person.id)
     Assert.AreEqual(2, Seq.length addresses)
 
-[<Test>]
+
 let ``left join``() =
     let c = withNewDbFile()
 
@@ -509,7 +350,7 @@ let ``left join``() =
     let personFields = Sql.recordFieldsAlias typeof<Person> "p"
     let addressFields = Sql.recordFieldsAlias typeof<Address> "a"
     let sql = sprintf "select %s,%s from person p left join address a on p.id = a.person order by p.id" personFields addressFields
-    printfn "%s" sql
+    logf "%s\n" sql
 
     let asPersonWithAddresses (r: IDataRecord) =
         asPerson r, (asAddress |> Sql.optionalBy "a_id") r
@@ -527,7 +368,7 @@ let ``left join``() =
     Assert.AreEqual(2, Seq.length (snd records.[0]))
     Assert.AreEqual(0, Seq.length (snd records.[1]))
 
-[<Test>]
+
 let ``list of map`` ()=
     let c = withNewDbFile()
     let insertPerson = Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)"
@@ -538,7 +379,7 @@ let ``list of map`` ()=
     Assert.AreEqual("name", keys.[1])
     Assert.AreEqual("parent", keys.[2])
 
-[<Test>]
+
 let ``map asRecord`` () = 
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -547,7 +388,7 @@ let ``map asRecord`` () =
     Assert.AreEqual("John", p.name)
     Assert.AreEqual(None, p.parent)
 
-[<Test>]
+
 let ``map asRecord with different field order`` () = 
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -556,7 +397,7 @@ let ``map asRecord with different field order`` () =
     Assert.AreEqual("John", p.name)
     Assert.AreEqual(None, p.parent)
 
-[<Test>]
+
 let ``map asRecord with too few fields throws`` () =
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -564,7 +405,7 @@ let ``map asRecord with too few fields throws`` () =
     let proc () = reader |> Sql.map (Sql.asRecord<Person> "") |> Enumerable.First |> ignore
     assertThrows<TargetParameterCountException> proc
 
-[<Test>]
+
 let ``map asRecord with prefix`` () = 
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -574,7 +415,7 @@ let ``map asRecord with prefix`` () =
     Assert.AreEqual("John", p.name)
     Assert.AreEqual(None, p.parent)
 
-[<Test>]
+
 let ``map asRecord with prefix with more fields`` () = 
     let c = withNewDbFile()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -585,13 +426,12 @@ let ``map asRecord with prefix with more fields`` () =
     Assert.AreEqual("John", p.name)
     Assert.AreEqual(None, p.parent)
         
-[<Test>]
+
 let ``asRecord throws with non-record type`` () = 
     assertThrows<ArgumentException>(fun () -> 
         let kk = Sql.asRecord<string>
         ())
 
-[<Test;Parallelizable>]
 let ``map single field`` () =
     let c = withMemDb()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -600,7 +440,6 @@ let ``map single field`` () =
     Assert.AreEqual(1, v.Length)
     Assert.AreEqual(5, v.[0])
 
-[<Test;Parallelizable>]
 let ``map single field as option`` () =
     let c = withMemDb()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -610,7 +449,6 @@ let ``map single field as option`` () =
     Assert.IsTrue(v.[0].IsSome)
     Assert.AreEqual(5, v.[0].Value)
 
-[<Test;Parallelizable>]
 let ``map to pair`` () =
     let c = withMemDb()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -620,7 +458,6 @@ let ``map to pair`` () =
     Assert.AreEqual(5, fst v.[0])
     Assert.AreEqual("John", snd v.[0])
 
-[<Test;Parallelizable>]
 let ``map to triple`` () =
     let c = withMemDb()
     Sql.execNonQueryF c "insert into person (id, name) values (%d, %s)" 5 "John" |> ignore
@@ -632,7 +469,7 @@ let ``map to triple`` () =
     Assert.AreEqual("John", b)
     Assert.IsTrue(c.IsNone)
 
-[<Test>]
+
 let ``compose tx`` () = 
     let c = withNewDbFile()
     let f1 m = Sql.execNonQueryF m "insert into person (id,name) values (%d, %s)" 3 "one" |> ignore
@@ -646,10 +483,10 @@ let ``compose tx`` () =
         (Tx.required finalTx) c
         Assert.Fail("Tx should have failed")
     with e -> 
-        printfn "%s" e.Message
+        logf "%s\n" e.Message
         Assert.AreEqual(0L, countUsers c)
 
-[<Test>]
+
 let ``tx required and never throw`` () = 
     let c = withNewDbFile()
     let f1 m = Sql.execNonQueryF m "insert into person (id,name) values (%d, %s)" 3 "one" |> ignore
@@ -658,14 +495,13 @@ let ``tx required and never throw`` () =
         f1 c
         Assert.Fail("Tx should have failed")
     with e -> 
-        printfn "%s" e.Message
+        logf "%s\n" e.Message
         Assert.AreEqual(0L, countUsers c)
     ()
 
 
 let tx = Tx.TransactionBuilder()
 
-[<Test;Parallelizable>]
 let ``tx monad error`` () = 
     let c = withMemDb()
     let v = ref false
@@ -678,13 +514,12 @@ let ``tx monad error`` () =
     match result with
     | Tx.Failed e -> 
         Assert.AreEqual(false, !v)
-        printfn "Error: %A" e
+        logf "Error: %A\n" e
     | _ -> Assert.Fail("Transaction should have failed")
 
 let txInsert id = 
     Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",id);P("@name", "juan")]
 
-[<Test;Parallelizable>]
 let ``tx monad error rollback`` () = 
     let c = withMemDb()
     let tran = tx {
@@ -695,11 +530,10 @@ let ``tx monad error rollback`` () =
     let result = tran c // execute transaction
     match result with
     | Tx.Failed e -> 
-        printfn "Error: %A" e
+        logf "Error: %A\n" e
         Assert.AreEqual(0L, countUsers c)
     | _ -> Assert.Fail("Transaction should have failed")
 
-[<Test;Parallelizable>]
 let ``tx monad ok`` () = 
     let c = withMemDb()
     let tran = tx {
@@ -714,7 +548,6 @@ let ``tx monad ok`` () =
     | Tx.Rollback e -> failwith "Transaction should not have failed"
     Assert.AreEqual(2L, countUsers c)
 
-[<Test;Parallelizable>]
 let ``tx monad using`` () = 
     let c = withMemDb()
     let tran = tx {
@@ -733,7 +566,6 @@ let ``tx monad using`` () =
     | Tx.Rollback a -> failwith "Transaction should not have failed"
     | Tx.Failed e -> failwithe e "Transaction should not have failed"
 
-[<Test;Parallelizable>]
 let ``tx monad rollback and zero`` () = 
     let c = withMemDb()
     let tran = tx {
@@ -749,7 +581,6 @@ let ``tx monad rollback and zero`` () =
         Assert.AreEqual(0L, countUsers c)
     | _ -> Assert.Fail("Transaction should have been rolled back")
 
-[<Test;Parallelizable>]
 let ``tx monad tryfinally`` () = 
     let c = withMemDb()
     let finallyRun = ref false
@@ -767,7 +598,6 @@ let ``tx monad tryfinally`` () =
         Assert.IsTrue(!finallyRun)
     | _ -> Assert.Fail("Transaction should have failed")
 
-[<Test;Parallelizable>]
 let ``tx monad composable`` () =
     let c = withMemDb()
     let tran1 = tx {
@@ -783,7 +613,6 @@ let ``tx monad composable`` () =
     | Tx.Rollback a -> failwith "Transaction should not have failed"
     | Tx.Failed e -> failwithe e "Transaction should not have failed"
 
-[<Test;Parallelizable>]
 let ``tx monad for`` () = 
     let c = withMemDb()
     let tran = tx {
@@ -796,7 +625,6 @@ let ``tx monad for`` () =
     | Tx.Rollback a -> failwith "Transaction should not have failed"
     | Tx.Failed e -> failwithe e "Transaction should not have failed"
 
-[<Test;Parallelizable>]
 let ``tx monad for with error`` () =
     let c = withMemDb()
     let tran = tx {
@@ -810,7 +638,6 @@ let ``tx monad for with error`` () =
     ()
 
 (*
-[<Test;Parallelizable>]
 let ``tx monad while`` () =
     let c = withMemDb()
     let tran() = tx {
@@ -827,7 +654,6 @@ let ``tx monad while`` () =
     | Tx.Failed e -> failwithe e "Transaction should not have failed"
 *)
 
-[<Test;Parallelizable>]
 let ``tx monad trywith``() =
     let c = withMemDb()
     let tran = tx {
@@ -844,10 +670,77 @@ let ``tx monad trywith``() =
     | Tx.Rollback a -> failwith "Transaction should not have failed"
     | Tx.Failed e -> failwithe e "Transaction should not have failed"
 
-[<Test;Parallelizable>]
 let ``tx then no tx``() =
     let c = withMemDb()
     let t = txInsert 1 |> Tx.required >> Tx.get
     t c
     let l = Sql.execReader c "select * from person" [] |> List.ofDataReader
     Assert.AreEqual(1, l.Length)
+
+// define test cases
+
+let connMgrTests = 
+    [
+        insertThenGet, "insertThenGet"
+        findNonExistentRecord, "findNonExistentRecord"
+        findExistentRecord, "findExistentRecord"
+        getMany, "getMany"
+        transactionWithException, "transactionWithException"
+        transactionCommitted, "transactionCommitted"
+        nestedTransactionsAreNotSupported, "nestedTransactionsAreNotSupported"
+        transactionWithOption, "transactionWithOption"
+        dataReaderIsParallelizable, "dataReaderIsParallelizable"
+        dataReaderToSeqIsForwardOnly, "dataReaderToSeqIsForwardOnly"
+        //dataReaderToSeqIsCacheable, "dataReaderToSeqIsCacheable"
+        //dataReaderToSeqIsCacheable2, "dataReaderToSeqIsCacheable2"
+        //dataReaderToSeqIsCacheable3, "dataReaderToSeqIsCacheable3"
+        dataReaderWithLazyList, "dataReaderWithLazyList"
+    ]
+
+open Fuchu
+
+let genTests conn suffix = 
+    [ for test,name in connMgrTests ->
+        TestCase (fun () -> conn() |> test)
+        |> withLabel (name + " " + suffix) ]
+
+let persistentDBTests = genTests withNewDbFile "(file db)"
+let memDBTests = genTests withMemDb "(memory db)"
+
+let otherParallelizableTests = 
+    [
+        ``tx then no tx``
+        ``tx monad trywith``
+        ``tx monad for with error``
+        ``tx monad for``
+        ``tx monad composable``
+        ``tx monad tryfinally``
+        ``tx monad rollback and zero``
+        ``tx monad using``
+        ``tx monad ok``
+        ``tx monad error rollback``
+        ``tx monad error``
+        ``map to pair``
+        ``map single field as option``
+        ``map single field``
+        ``asRecord throws with non-record type``
+    ] |> List.map TestCase
+
+let nonParallelizableTests = 
+    [
+        ``tx required and never throw``
+        ``compose tx``
+        ``map to triple``
+        ``map asRecord with prefix with more fields``
+        ``map asRecord with prefix``
+        ``map asRecord with too few fields throws``
+        ``map asRecord with different field order``
+        ``map asRecord``
+        ``list of map``
+        ``left join``
+        ``inner join``
+        ``duplicate field names are NOT supported``
+        ``async exec reader``
+        ``create command``
+    ] |> List.map TestCase
+

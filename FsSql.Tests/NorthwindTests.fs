@@ -75,7 +75,7 @@ type OrderDetail = {
     product: int
 }
 
-[<Test>]
+
 let ``something``() =
     createSchema [typeof<Employee>; typeof<Order>; typeof<Product>; typeof<OrderDetail>]
     ()

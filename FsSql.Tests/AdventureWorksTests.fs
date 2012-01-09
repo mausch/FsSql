@@ -13,13 +13,11 @@ let createConnection() =
 let connMgr = Sql.withNewConnection createConnection
 let sql = SqlWrapper(connMgr)
 
-[<Test>]
 let select() =
     let l = sql.ExecReaderF "select * from HumanResources.Department" |> List.ofDataReader
     printfn "%d" l.Length
     ()
 
-[<Test>]
 let ``stored procedure``() =
     let l = sql.ExecSPReader "uspGetEmployeeManagers" (Sql.parameters ["@EmployeeID", box 1]) |> List.ofDataReader
     printfn "%d" l.Length
