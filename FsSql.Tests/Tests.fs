@@ -681,20 +681,20 @@ let ``tx then no tx``() =
 
 let connMgrTests = 
     [
-        insertThenGet, "insertThenGet"
-        findNonExistentRecord, "findNonExistentRecord"
-        findExistentRecord, "findExistentRecord"
-        getMany, "getMany"
-        transactionWithException, "transactionWithException"
-        transactionCommitted, "transactionCommitted"
-        nestedTransactionsAreNotSupported, "nestedTransactionsAreNotSupported"
-        transactionWithOption, "transactionWithOption"
-        dataReaderIsParallelizable, "dataReaderIsParallelizable"
-        dataReaderToSeqIsForwardOnly, "dataReaderToSeqIsForwardOnly"
+        insertThenGet, "insert then get"
+        findNonExistentRecord, "find non existent record"
+        findExistentRecord, "find existent record"
+        getMany, "select all truncate 10"
+        transactionWithException, "transaction with exception"
+        transactionCommitted, "transaction committed"
+        nestedTransactionsAreNotSupported, "nested transactions are not supported"
+        transactionWithOption, "transaction with option"
+        dataReaderIsParallelizable, "datareader is parallelizable"
+        dataReaderToSeqIsForwardOnly, "datareader to seq is forward only"
         //dataReaderToSeqIsCacheable, "dataReaderToSeqIsCacheable"
         //dataReaderToSeqIsCacheable2, "dataReaderToSeqIsCacheable2"
         //dataReaderToSeqIsCacheable3, "dataReaderToSeqIsCacheable3"
-        dataReaderWithLazyList, "dataReaderWithLazyList"
+        dataReaderWithLazyList, "datareader with lazy list"
     ]
 
 open Fuchu
