@@ -4,8 +4,8 @@ open Fuchu
 
 [<EntryPoint>]
 let main args =
-    let r1 = TestList (nonParallelizableTests @ persistentDBTests) |> flattenEvalSeq |> sumTestResults
-    let r2 = TestList (otherParallelizableTests @ memDBTests) |> flattenEvalPar |> sumTestResults
+    let r1 = TestList (nonParallelizableTests @ persistentDBTests) |> evalSeq |> sumTestResults
+    let r2 = TestList (otherParallelizableTests @ memDBTests) |> evalPar |> sumTestResults
     let r = r1 + r2
     Console.WriteLine r
-    testResultCountsToErrorLevel r
+    r.ToErrorLevel()
