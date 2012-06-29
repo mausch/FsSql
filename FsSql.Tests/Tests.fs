@@ -701,8 +701,7 @@ open Fuchu
 
 let genTests conn suffix = 
     [ for test,name in connMgrTests ->
-        TestCase (fun () -> conn() |> test)
-        |> withLabel (name + " " + suffix) ]
+        testCase (name + " " + suffix) (fun () -> conn() |> test) ]
 
 let persistentDBTests = genTests withNewDbFile "(file db)"
 let memDBTests = genTests withMemDb "(memory db)"

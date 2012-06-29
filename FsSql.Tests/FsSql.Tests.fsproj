@@ -42,6 +42,7 @@
     <Compile Include="AdventureWorksTests.fs" />
     <Compile Include="main.fs" />
     <None Include="Samples.fsx" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.PowerPack">
@@ -51,10 +52,8 @@
       <HintPath>C:\Program Files (x86)\FSharpPowerPack-2.0.0.0\bin\FSharp.PowerPack.Parallel.Seq.dll</HintPath>
     </Reference>
     <Reference Include="Fuchu">
-      <HintPath>..\lib\Fuchu.dll</HintPath>
-    </Reference>
-    <Reference Include="Fuchu.TDNet">
-      <HintPath>..\lib\Fuchu.TDNet.dll</HintPath>
+      <HintPath>..\packages\Fuchu.0.1.2\lib\net40-client\Fuchu.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Gallio">
       <HintPath>..\lib\Gallio.dll</HintPath>

@@ -1,6 +1,7 @@
 ﻿open System
 open FsSql.Tests
 open Fuchu
+open Fuchu.Impl
 
 [<EntryPoint>]
 let main args =
@@ -8,4 +9,4 @@ let main args =
     let r2 = TestList (otherParallelizableTests @ memDBTests) |> evalPar |> sumTestResults
     let r = r1 + r2
     Console.WriteLine r
-    r.ToErrorLevel()
+    TestResultCounts.errorCode r
