@@ -5,6 +5,11 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsSql", "FsSql\FsSql.fsproj
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsSql.Tests", "FsSql.Tests\FsSql.Tests.fsproj", "{FFAE1F80-4C7C-4F58-9077-838C4265EED6}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{72551D9F-C0B4-4144-8950-6810A7A5F4DA}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\packages.config = .nuget\packages.config
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
