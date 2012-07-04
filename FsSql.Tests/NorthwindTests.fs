@@ -1,6 +1,5 @@
-﻿module NorthwindTests
+﻿module FsSql.Tests.NorthwindTests
 
-open MbUnit.Framework
 open System
 open System.Collections.Generic
 open System.Data

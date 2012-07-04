@@ -1,9 +1,8 @@
-﻿module AdventureWorksTests
+﻿module FsSql.Tests.AdventureWorksTests
 
 open System
 open System.Data
 open System.Data.SqlClient
-open MbUnit.Framework
 
 let createConnection() =
     let c = new SqlConnection("Data Source=.\\sqlexpress;initial catalog=AdventureWorks;Integrated Security=SSPI;")

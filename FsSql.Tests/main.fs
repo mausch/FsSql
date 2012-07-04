@@ -1,5 +1,6 @@
 ﻿open System
 open FsSql.Tests
+open FsSql.Tests.FsSqlTests
 open Fuchu
 open Fuchu.Impl
 
