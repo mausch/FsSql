@@ -17,7 +17,13 @@ type ConnectionManager = {
     create: unit -> IDbConnection
     dispose: IDbConnection -> unit
     tx: IDbTransaction option
-}
+    setupCommand: IDbCommand -> unit
+} with 
+    static member make(create, dispose, ?tx, ?setupCommand) =
+        { create = create
+          dispose = dispose
+          tx = tx
+          setupCommand = defaultArg setupCommand ignore }
 
 /// Creates a <see cref="ConnectionManager"/> with an externally-owned connection
 let withConnection (conn: IDbConnection) : ConnectionManager =
@@ -26,7 +32,7 @@ let withConnection (conn: IDbConnection) : ConnectionManager =
         logf "creating connection from const %s" id
         conn
     let dispose c = logf "disposing connection (but not really) %s" id
-    { create = create; dispose = dispose; tx = None }
+    ConnectionManager.make(create, dispose)
 
 /// Creates a <see cref="ConnectionManager"/> with an externally-owned transaction
 let withTransaction (tx: IDbTransaction): ConnectionManager =
@@ -35,7 +41,7 @@ let withTransaction (tx: IDbTransaction): ConnectionManager =
         logf "creating connection from const %s" id
         tx.Connection
     let dispose c = logf "disposing connection (but not really) %s" id
-    { create = create; dispose = dispose; tx = Some tx }
+    ConnectionManager.make(create, dispose, tx)
 
 /// Creates a <see cref="ConnectionManager"/> with an owned connection
 let withNewConnection (create: unit -> IDbConnection) : ConnectionManager = 
@@ -46,11 +52,11 @@ let withNewConnection (create: unit -> IDbConnection) : ConnectionManager =
     let dispose (c: IDisposable) = 
         c.Dispose()
         logf "disposing connection %s" id
-    { create = create; dispose = dispose; tx = None }
+    ConnectionManager.make(create, dispose)
 
 let internal withCreateConnection (create: unit -> IDbConnection) : ConnectionManager = 
     let dispose x = ()
-    { create = create; dispose = dispose; tx = None }
+    ConnectionManager.make(create, dispose)
 
 let internal doWithConnection (cmgr: ConnectionManager) f =
     withResource cmgr.create cmgr.dispose f
@@ -107,6 +113,7 @@ let internal sqlProcessor (cmgr: ConnectionManager) (withCmd: IDbCommand -> IDbC
             param.Value <- p
             cmd.Parameters.Add param |> ignore
         values |> Seq.iteri createParam
+        cmgr.setupCommand cmd
         withCmd cmd conn
     doWithConnection cmgr sqlProcessor'
 
@@ -158,6 +165,7 @@ let createCommand (cmgr: ConnectionManager) =
     let conn = cmgr.create()
     let cmd = conn.CreateCommand()
     cmd.Transaction <- Option.getOrDefault cmgr.tx
+    cmgr.setupCommand cmd
     let dispose () = cmgr.dispose conn
     new DbCommandWrapper(cmd, dispose) :> IDbCommand
 
