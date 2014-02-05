@@ -136,13 +136,13 @@ let execNonQueryF connectionFactory a = PrintfFormatProc (sqlProcessorNonQuery c
 
 /// Represents a parameter to a command
 type Parameter = {
-    DbType: DbType
+    DbType: DbType option
     Direction: ParameterDirection
     ParameterName: string
     Value: obj
 } with
     static member make(parameterName, value: obj) =
-        { DbType = Unchecked.defaultof<DbType>
+        { DbType = None
           Direction = ParameterDirection.Input
           ParameterName = parameterName
           Value = value }
@@ -150,7 +150,9 @@ type Parameter = {
 /// Adds a parameter to a command
 let addParameter (cmd: #IDbCommand) (p: Parameter) =
     let par = cmd.CreateParameter()
-    par.DbType <- p.DbType
+    match p.DbType with
+    | Some t -> par.DbType <- t
+    | None -> ()
     par.Direction <- p.Direction
     par.ParameterName <- p.ParameterName
     par.Value <- 
