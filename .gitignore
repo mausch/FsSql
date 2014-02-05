@@ -6,3 +6,4 @@ test.db
 _ReSharper*
 packages/*
 *.DotSettings.user
+.nuget/*.exe
