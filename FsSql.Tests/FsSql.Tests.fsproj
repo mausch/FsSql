@@ -49,11 +49,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="FSharp.PowerPack">
-      <HintPath>C:\Program Files (x86)\FSharpPowerPack-2.0.0.0\bin\FSharp.PowerPack.dll</HintPath>
-    </Reference>
-    <Reference Include="FSharp.PowerPack.Parallel.Seq">
-      <HintPath>C:\Program Files (x86)\FSharpPowerPack-2.0.0.0\bin\FSharp.PowerPack.Parallel.Seq.dll</HintPath>
+    <Reference Include="FSharp.Collections.ParallelSeq">
+      <HintPath>..\packages\FSharp.Collections.ParallelSeq.1.0\lib\net40\FSharp.Collections.ParallelSeq.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Fuchu">
       <HintPath>..\packages\Fuchu.0.2.0\lib\net40-client\Fuchu.dll</HintPath>
