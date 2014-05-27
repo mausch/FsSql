@@ -12,6 +12,7 @@ open FsSqlPrelude
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Reflection
 open FSharp.Collections.ParallelSeq
+open FSharpx.Collections
 
 let P = Sql.Parameter.make
 

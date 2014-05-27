@@ -53,6 +53,10 @@
       <HintPath>..\packages\FSharp.Collections.ParallelSeq.1.0\lib\net40\FSharp.Collections.ParallelSeq.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="FSharpx.Collections">
+      <HintPath>..\packages\FSharpx.Collections.1.9.2\lib\net35\FSharpx.Collections.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Fuchu">
       <HintPath>..\packages\Fuchu.0.2.0\lib\net40-client\Fuchu.dll</HintPath>
       <Private>True</Private>
