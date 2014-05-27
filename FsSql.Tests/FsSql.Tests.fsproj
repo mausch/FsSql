@@ -9,7 +9,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>FsSql.Tests</RootNamespace>
     <AssemblyName>FsSql.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <Name>FsSql.Tests</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
