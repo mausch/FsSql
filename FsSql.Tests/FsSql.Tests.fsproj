@@ -47,6 +47,7 @@
     <Compile Include="main.fs" />
     <None Include="Samples.fsx" />
     <None Include="packages.config" />
+    <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.Collections.ParallelSeq">
