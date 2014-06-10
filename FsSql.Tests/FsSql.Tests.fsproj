@@ -44,6 +44,7 @@
     <Compile Include="Tests.fs" />
     <Compile Include="NorthwindTests.fs" />
     <Compile Include="AdventureWorksTests.fs" />
+    <Compile Include="TableValuedParametersTests.fs" />
     <Compile Include="main.fs" />
     <None Include="Samples.fsx" />
     <None Include="packages.config" />
