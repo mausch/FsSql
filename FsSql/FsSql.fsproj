@@ -47,6 +47,7 @@
     <Compile Include="prelude.fs" />
     <Compile Include="AsyncExtensions.fs" />
     <Compile Include="OptionExtensions.fs" />
+    <Compile Include="DbConnectionWrapper.fs" />
     <Compile Include="DbCommandWrapper.fs" />
     <Compile Include="DictDataRecord.fs" />
     <Compile Include="DataReaderWrapper.fs" />

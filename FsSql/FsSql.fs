@@ -169,7 +169,8 @@ let createCommand (cmgr: ConnectionManager) =
     cmd.Transaction <- Option.getOrDefault cmgr.tx
     cmgr.setupCommand cmd
     let dispose () = cmgr.dispose conn
-    new DbCommandWrapper(cmd, dispose) :> IDbCommand
+    { new DbCommandWrapper(cmd) with
+        override x.Dispose() = cmd.Dispose(); dispose() } :> IDbCommand
 
 let internal prepareCommand (connection: #IDbConnection) (tx: IDbTransaction option) (sql: string) (cmdType: CommandType) (parameters: #seq<Parameter>) =
     let cmd = connection.CreateCommand()
