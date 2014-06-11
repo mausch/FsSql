@@ -56,7 +56,6 @@
     <Compile Include="Transactions.fs" />
     <Compile Include="FsSqlOperators.fs" />
     <Compile Include="SqlWrapper.fs" />
-    <Compile Include="SqlClient.fs" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

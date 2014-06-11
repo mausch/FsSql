@@ -142,25 +142,48 @@ type Parameter = {
     Value: obj
 } with
     static member make(parameterName, value: obj) =
-        { DbType = None
-          Direction = ParameterDirection.Input
-          ParameterName = parameterName
-          Value = value }
+        ParameterType.Value 
+            { DbType = None
+              Direction = ParameterDirection.Input
+              ParameterName = parameterName
+              Value = value }
+
+and [<RequireQualifiedAccess>] TableParameter = {
+    ParameterName: string
+    TypeName: string
+    Value: obj
+}
+
+and [<RequireQualifiedAccess>] 
+    ParameterType =
+    | Value of Parameter 
+    | Table of TableParameter
 
 /// Adds a parameter to a command
-let addParameter (cmd: #IDbCommand) (p: Parameter) =
-    let par = cmd.CreateParameter()
-    match p.DbType with
-    | Some t -> par.DbType <- t
-    | None -> ()
-    par.Direction <- p.Direction
-    par.ParameterName <- p.ParameterName
-    par.Value <- 
-        match p.Value with
-        | null -> box DBNull.Value
-        | FSharpValue.OptionType -> optionToDBNull p.Value
-        | x -> x
-    cmd.Parameters.Add par |> ignore
+let addParameter (cmd: #IDbCommand) (p: ParameterType) =
+    let actualParameter = 
+        match p with
+        | ParameterType.Table p ->
+            let par = SqlParameter(p.ParameterName, SqlDbType.Structured, 
+                                   Value = p.Value, 
+                                   TypeName = p.TypeName, 
+                                   Direction = ParameterDirection.Input)
+            par :> IDbDataParameter
+        | ParameterType.Value p ->
+            let par = cmd.CreateParameter()
+            match p.DbType with
+            | Some t -> par.DbType <- t
+            | None -> ()
+            par.Direction <- p.Direction
+            par.ParameterName <- p.ParameterName
+            par.Value <- 
+                match p.Value with
+                | null -> box DBNull.Value
+                | FSharpValue.OptionType -> optionToDBNull p.Value
+                | x -> x
+            par
+
+    cmd.Parameters.Add actualParameter |> ignore
 
 /// Creates an IDbCommand
 let createCommand (cmgr: ConnectionManager) = 
@@ -171,7 +194,7 @@ let createCommand (cmgr: ConnectionManager) =
     let dispose () = cmgr.dispose conn
     new DbCommandWrapper(cmd, dispose) :> IDbCommand
 
-let internal prepareCommand (connection: #IDbConnection) (tx: IDbTransaction option) (sql: string) (cmdType: CommandType) (parameters: #seq<Parameter>) =
+let internal prepareCommand (connection: #IDbConnection) (tx: IDbTransaction option) (sql: string) (cmdType: CommandType) (parameters: #seq<ParameterType>) =
     let cmd = connection.CreateCommand()
     cmd.CommandText <- sql
     cmd.Transaction <- Option.getOrDefault tx
@@ -190,7 +213,7 @@ let paramsFromDict (p: #IDictionary<string, obj>) =
     p |> Seq.map (|KeyValue|) |> parameters
 
 /// Executes and returns a data reader
-let internal execReaderInternal (exec: IDbCommand -> (unit -> unit) -> 'a) cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
+let internal execReaderInternal (exec: IDbCommand -> (unit -> unit) -> 'a) cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<ParameterType>) =
     let connection = cmgr.create()
     let cmd = prepareCommand connection cmgr.tx sql cmdType parameters
     let dispose() = 
@@ -221,7 +244,7 @@ let asyncExecReader connMgr = execReaderInternal execReaderAsyncWrap CommandType
 let asyncExecSPReader connMgr = execReaderInternal execReaderAsyncWrap CommandType.StoredProcedure connMgr
 
 /// Executes and returns the number of rows affected
-let internal execNonQueryInternal (exec: IDbCommand -> 'a) cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
+let internal execNonQueryInternal (exec: IDbCommand -> 'a) cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<ParameterType>) =
     let execNonQuery' connection = 
         use cmd = prepareCommand connection cmgr.tx sql cmdType parameters
         exec cmd
