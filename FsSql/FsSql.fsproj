@@ -50,6 +50,7 @@
     <Compile Include="DbCommandWrapper.fs" />
     <Compile Include="DictDataRecord.fs" />
     <Compile Include="DataReaderWrapper.fs" />
+    <Compile Include="DataTableExtensions.fs" />
     <Compile Include="SeqExtensions.fs" />
     <Compile Include="ListExtensions.fs" />
     <Compile Include="FsSql.fs" />

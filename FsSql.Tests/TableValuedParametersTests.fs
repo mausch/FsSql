@@ -65,6 +65,15 @@ let tvpTests =
 //                    |> Seq.toList
 //                Assert.Equal("Should return 2 people", 2, people.Length)
                 //    Assert.Equal("First person should be Person 1", 1, people.[
+        testCase "DataTable.ofRecords" <|
+            fun _ ->
+                let personIds = [1;2] |> List.map (fun v -> { value = v })
+                let dt = DataTable.ofRecords personIds
+                Assert.Equal("Should ahve 1 column", 1, dt.Columns.Count)
+                Assert.Equal("Column should be the same name as the record field", "value", dt.Columns.[0].ColumnName)
+                Assert.Equal("Column type be the same name as the record field", typeof<int>, dt.Columns.[0].DataType)
+                Assert.Equal("Should have 2 Rows", 2, dt.Rows.Count)
+//                Assert.Equal("First row should be the same as the value of the first record", (personIds |> Seq.head).value, dt.Rows.Item[0].Item.[0] :?> int)
     ]   
 
 
