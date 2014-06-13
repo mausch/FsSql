@@ -725,3 +725,16 @@ let nonParallelizableTests =
         ``create command``
     ] |> List.map TestCase
 
+type TableValuedParameterRowType = { value : int }
+
+let namedTests =
+    [
+        testCase "DataTable.ofRecords" <|
+            fun _ ->
+                let personIds = [1;2] |> List.map (fun v -> { value = v })
+                let dt = DataTable.ofRecords personIds
+                Assert.Equal("Should ahve 1 column", 1, dt.Columns.Count)
+                Assert.Equal("Column should be the same name as the record field", "value", dt.Columns.[0].ColumnName)
+                Assert.Equal("Column type be the same name as the record field", typeof<int>, dt.Columns.[0].DataType)
+                Assert.Equal("Should have 2 Rows", 2, dt.Rows.Count)
+    ]
