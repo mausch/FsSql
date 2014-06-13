@@ -5,8 +5,9 @@ open System
 open System.Collections.Generic
 open System.Data
 open System.Data.SqlClient
-open FsSqlPrelude
 open FsSql.Tests.FsSqlTests
+open FsSqlPrelude
+open FsSql
 
 type TableValuedParameterRowType = { value : int }
 
@@ -53,17 +54,18 @@ let tvpTests =
                 for i in 1..3 do 
                     insertPerson conn {id = i; name = (sprintf "Don %i" i); parent = None}
                 let personIds = [1;2] |> List.map (fun v -> { value = v })
-                ()
-                // TODO FIX
-//                let tableValuedParam =
-//                    TableValued (TableValuedParameter.make("@PersonIds", personIds))
-//                let otherParam = 
-//                    Standard (Sql.Parameter.make("@OtherParam", 1))
-//                let people = 
-//                    execSPReader conn "[dbo].[GetPeople]" [tableValuedParam;otherParam]
-//                    |> Sql.map (Sql.asRecord<Person> "")
-//                    |> Seq.toList
-//                Assert.Equal("Should return 2 people", 2, people.Length)
+                let tableValuedParam =
+                    Sql.ParameterType.Table { 
+                        Sql.TableParameter.ParameterName = "@PersonIds"
+                        TypeName = ""
+                        Value = personIds }
+                let otherParam = 
+                    Sql.Parameter.make("@OtherParam", 1)
+                let people = 
+                    Sql.execSPReader conn "[dbo].[GetPeople]" [tableValuedParam;otherParam]
+                    |> Sql.map (Sql.asRecord<Person> "")
+                    |> Seq.toList
+                Assert.Equal("Should return 2 people", 2, people.Length)
                 //    Assert.Equal("First person should be Person 1", 1, people.[
         testCase "DataTable.ofRecords" <|
             fun _ ->
