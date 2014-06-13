@@ -4,10 +4,14 @@ open FsSql.Tests.FsSqlTests
 open Fuchu
 open Fuchu.Impl
 
-[<EntryPoint>]
-let main args =
+let runTests() =
     let r1 = TestList (nonParallelizableTests @ persistentDBTests) |> evalSeq |> sumTestResults
     let r2 = TestList (otherParallelizableTests @ memDBTests @ namedTests) |> evalPar |> sumTestResults
     let r = r1 + r2
     Console.WriteLine r
     TestResultCounts.errorCode r
+
+[<EntryPoint>]
+let main args =
+    runTests()
+    //run TableValuedParametersTests.tvpTests

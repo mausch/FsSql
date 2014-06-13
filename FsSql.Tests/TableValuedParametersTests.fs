@@ -55,7 +55,7 @@ let tvpTests =
                 let tableValuedParam =
                     Sql.ParameterType.Table { 
                         Sql.TableParameter.ParameterName = "@PersonIds"
-                        TypeName = ""
+                        TypeName = "" // TODO no idea what this should be
                         Value = personIds }
                 let otherParam = 
                     Sql.Parameter.make("@OtherParam", 1)
