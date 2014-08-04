@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>FsSql</id>
+    <version>0.1.0</version>
+    <title>FsSql</title>
+    <authors>Mauricio Scheffer</authors>
+    <owners>Mauricio Scheffer</owners>
+    <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+    <projectUrl>http://www.ohloh.net/p/FsSql</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Functional ADO.NET for F#</description>
+    <language>en-US</language>
+    <tags>F# sql</tags>
+  </metadata>
+  <files>
+    <file src="FsSql\bin\Release\FsSql.*" target="lib\" />
+  </files>
+</package>
