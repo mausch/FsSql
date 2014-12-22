@@ -1,16 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{72551D9F-C0B4-4144-8950-6810A7A5F4DA}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\NuGet.exe = .nuget\NuGet.exe
-		.nuget\NuGet.targets = .nuget\NuGet.targets
-	EndProjectSection
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FsSql", "FsSql\FsSql.fsproj", "{F2570DA4-5DF1-4D5E-9534-B3F55606B3B5}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsSql", "FsSql\FsSql.fsproj", "{F2570DA4-5DF1-4D5E-9534-B3F55606B3B5}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsSql.Tests", "FsSql.Tests\FsSql.Tests.fsproj", "{FFAE1F80-4C7C-4F58-9077-838C4265EED6}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "FsSql.Tests", "FsSql.Tests\FsSql.Tests.fsproj", "{FFAE1F80-4C7C-4F58-9077-838C4265EED6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,6 +19,9 @@ Global
 		{FFAE1F80-4C7C-4F58-9077-838C4265EED6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FFAE1F80-4C7C-4F58-9077-838C4265EED6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FFAE1F80-4C7C-4F58-9077-838C4265EED6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = FsSql\FsSql.fsproj
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
