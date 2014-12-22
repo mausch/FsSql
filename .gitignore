@@ -8,3 +8,5 @@ packages/*
 *.DotSettings.user
 .nuget/*.exe
 *.nupkg
+FsSql.userprefs
+
