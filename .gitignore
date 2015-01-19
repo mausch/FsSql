@@ -9,4 +9,4 @@ packages/*
 .nuget/*.exe
 *.nupkg
 FsSql.userprefs
-
+*.exe
