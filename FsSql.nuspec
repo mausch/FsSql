@@ -7,13 +7,19 @@
     <authors>Mauricio Scheffer</authors>
     <owners>Mauricio Scheffer</owners>
     <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
-    <projectUrl>http://www.ohloh.net/p/FsSql</projectUrl>
+    <projectUrl>https://www.openhub.net/p/FsSql</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Functional ADO.NET for F#</description>
     <language>en-US</language>
     <tags>F# sql</tags>
+    <dependencies>
+      <group targetFramework="net40">
+        <dependency id="FSharp.Core" version="3.1.2.1"/>
+      </group>
+    </dependencies>
   </metadata>
   <files>
-    <file src="FsSql\bin\Release\FsSql.*" target="lib\" />
-  </files>
+    <file src="FsSql\bin\v4.0\Release\FsSql.*" target="lib\NET40" />
+    <file src="FsSql\bin\v2.0\Release\FsSql.*" target="lib\NET20" />
+  </files>  
 </package>

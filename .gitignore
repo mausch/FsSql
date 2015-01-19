@@ -10,3 +10,4 @@ packages/*
 *.nupkg
 FsSql.userprefs
 *.exe
+*.sln.ide
