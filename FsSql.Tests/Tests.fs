@@ -659,6 +659,31 @@ let ``tx then no tx``() =
     let l = Sql.execReader c "select * from person" [] |> List.ofDataReader
     Assert.Equal("result count", 1, l.Length)
 
+let ``can execute serialisable tx``() =
+      let cm = withMemDb()
+      let select_one m = Sql.execScalar m "select 1" []
+      let select_one =
+        select_one
+        |> Tx.transactional2
+        |> Tx.transactionalWithIsolation IsolationLevel.Serializable
+      let res = select_one cm
+      Assert.Equal("Can execute tx", Tx.TxResult.Commit(Some 1L), res)
+
+let ``can execute serialisable tx 2``() =
+    let tx = Tx.TransactionBuilder()
+    let cm = withMemDb()
+    let select_one = tx {
+        let! a = Tx.execScalar "select 1" []
+        let a : int64 = Option.get a
+        do! Tx.rollback 3L
+        let! b = Tx.execScalar "select 1" []
+        let b : int64 = Option.get b
+        return a + b
+    }
+    let select_one = select_one |> Tx.transactionalWithIsolation IsolationLevel.Serializable
+    let res = select_one cm
+    Assert.Equal("Can execute tx", Tx.TxResult.Rollback 3L, res)
+
 // define test cases
 
 let connMgrTests = 
@@ -705,6 +730,8 @@ let otherParallelizableTests =
         ``map single field as option``
         ``map single field``
         ``asRecord throws with non-record type``
+        ``can execute serialisable tx``
+        ``can execute serialisable tx 2``
     ] |> List.map TestCase
 
 let nonParallelizableTests = 
