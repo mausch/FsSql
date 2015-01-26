@@ -6,22 +6,35 @@ open Sql
 open FsSqlPrelude
 open Microsoft.FSharp.Reflection
 
+/// Transaction result
+type TxResult<'a,'b> = 
+    /// Transaction committed successfully
+    | Commit of 'a 
+    /// Transaction manually rolled back
+    | Rollback of 'b
+    /// Transaction failed due to an exception and was rolled back
+    | Failed of exn
         
 /// Wraps a function in a transaction with the specified <see cref="IsolationLevel"/>
-let transactionalWithIsolation (isolation: IsolationLevel) f cmgr =
-    let transactionalWithIsolation' (conn: IDbConnection) = 
+let transactionalWithIsolation (isolation: IsolationLevel) (f: ConnectionManager -> 'a) (cmgr: ConnectionManager) : TxResult<'a, 'b> =
+    let transactionalWithIsolation' (conn: IDbConnection) =
         let id = Guid.NewGuid().ToString()
+        logf "starting tx %s" id
         use tx = conn.BeginTransaction(isolation)
         logf "started tx %s" id
         try
             let r = f (withTransaction tx)
             tx.Commit()
             logf "committed tx %s" id
-            r
+            Commit r
         with e ->
+            logf "got exception in tx %s : \n%A" id e
+            if isNull tx.Connection then
+                logf "WARNING: null connection in tx %s" id
+            logf "rolling back tx %s" id
             tx.Rollback()
             logf "rolled back tx %s" id
-            reraise()
+            Failed e
     doWithConnection cmgr transactionalWithIsolation'
 
 /// Wraps a function in a transaction
@@ -52,32 +65,8 @@ let required f (cmgr: ConnectionManager) =
     let g = 
         match cmgr.tx with
         | None -> transactional
-        | _ -> id
+        | _ -> fun f mgr -> Commit (f mgr)
     (g f) cmgr
-
-/// Transaction result
-type TxResult<'a,'b> = 
-    /// Transaction committed successfully
-    | Commit of 'a 
-    /// Transaction manually rolled back
-    | Rollback of 'b
-    /// Transaction failed due to an exception and was rolled back
-    | Failed of exn
-
-/// <summary>
-/// Wraps a function in a transaction, returns a <see cref="TxResult"/>
-/// </summary>
-let transactional2 f (cmgr: ConnectionManager) =
-    let transactional2' (conn: IDbConnection) =
-        let tx = conn.BeginTransaction()
-        try
-            let r = f (withTransaction tx)
-            tx.Commit()
-            Commit r
-        with e ->
-            tx.Rollback()
-            Failed e
-    doWithConnection cmgr transactional2'
 
 //type M<'a,'b> = ConnectionManager -> TxResult<'a,'b>
 
@@ -97,7 +86,7 @@ let inline mreturn a =
 let inline combine m2 m1 =
     m1 |> bind (fun _ -> m2)
 
-type TransactionBuilder() =
+type TransactionBuilder(?isolation: IsolationLevel) =
     member x.Delay f = f()
 
     member x.Bind(m, f) = bind f m
@@ -147,7 +136,7 @@ type TransactionBuilder() =
             | Rollback a -> Rollback a
             | Failed e -> handler e cmgr            
 
-    member x.Run (f: ConnectionManager -> TxResult<'a,_>) =         
+    member x.Run (f: ConnectionManager -> TxResult<'a,_>) =
         let subscribe (tx: IDbTransaction) (onCommit: IDbTransaction -> 'a -> TxResult<'a,_>) = 
             let r = f (withTransaction tx)
             match r with
@@ -160,7 +149,8 @@ type TransactionBuilder() =
                 Failed e
 
         let transactional (conn: IDbConnection) =
-            let tx = conn.BeginTransaction()
+            let il = defaultArg isolation IsolationLevel.Unspecified
+            let tx = conn.BeginTransaction(il)
             let onCommit (tran: IDbTransaction) result = 
                 tran.Commit()
                 Commit result

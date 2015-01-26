@@ -157,8 +157,10 @@ let someTranAndFail conn =
 
 let transactionWithException conn =
     let someTran = Tx.transactional someTranAndFail
-    let someTran = catch () someTran
-    someTran conn
+    match someTran conn with
+    | Tx.TxResult.Failed _ -> ()
+    | x -> failtestf "Expected tx failure, actual %A" x
+
     Assert.Equal("user count", 0L, countUsers conn)
 
 let someTran conn =
@@ -168,24 +170,26 @@ let someTran conn =
 let transactionCommitted conn =
     let someTran conn = someTran conn
     let someTran = Tx.transactional someTran
-    someTran conn
+    match someTran conn with
+    | Tx.TxResult.Commit () -> ()
+    | x -> failtestf "Expected tx success, actual %A" x
     Assert.Equal("user count", 2L, countUsers conn)
 
 let someTranWithSubTran conn =
     let subtran conn = 
         insertUser conn {id = 3; name = "jorge"; parent = None}
         failwith "this fails"
-    (Tx.transactional subtran) conn
+    (Tx.transactional subtran) conn |> ignore
     insertUser conn {id = 1; name = "pepe"; parent = None}
     insertUser conn {id = 2; name = "jose"; parent = None}
     ()
 
 let nestedTransactionsAreNotSupported conn =
-    let someTran = Tx.transactional someTranWithSubTran
+    let someTran = Tx.transactional someTranWithSubTran >> ignore
     Assert.Raise("transaction exception", typeof<SQLiteException>, fun _ -> someTran conn)
 
 let transactionWithOption conn =
-    let someTran = Tx.transactional2 someTranAndFail
+    let someTran = Tx.transactional someTranAndFail
     let result = someTran conn
     match result with
     | Tx.Commit v -> failtestf "Expected transaction fail, actual Commit %A" v
@@ -217,7 +221,7 @@ let insertUsers conn =
     insert conn
     
 let dataReaderIsParallelizable conn =
-    insertUsers conn
+    insertUsers conn |> ignore
     log "reading"
     let primes = Sql.execReader conn "select * from person" []
                     |> Seq.ofDataReader
@@ -227,7 +231,7 @@ let dataReaderIsParallelizable conn =
     logf "%d primes" primes
 
 let dataReaderToSeqIsForwardOnly conn =
-    insertUsers conn
+    insertUsers conn |> ignore
     let all = Sql.execReader conn "select * from person" []
                 |> Seq.ofDataReader
     all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "id: %d\n" (r?id).Value)
@@ -236,7 +240,7 @@ let dataReaderToSeqIsForwardOnly conn =
     Assert.Raise("invalid operation", typeof<InvalidOperationException>, secondIter)
 
 let dataReaderToSeqIsCacheable conn =
-    insertUsers conn
+    insertUsers conn |> ignore
     // this doesn't dispose the data reader
     let all = Sql.execReader conn "select * from person" []
                 |> Seq.ofDataReader
@@ -245,7 +249,7 @@ let dataReaderToSeqIsCacheable conn =
     all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "name: %s\n" (r?name).Value)
 
 let dataReaderToSeqIsCacheable2 conn =
-    insertUsers conn
+    insertUsers conn |> ignore
     use reader = Sql.execReader conn "select * from person" []
     let all = reader
                 |> Seq.ofDataReader
@@ -254,7 +258,7 @@ let dataReaderToSeqIsCacheable2 conn =
     all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "name: %s\n" (r?name).Value)
 
 let dataReaderToSeqIsCacheable3 conn =
-    insertUsers conn
+    insertUsers conn |> ignore
     let reader = Sql.execReader conn "select * from person" []
     let withReader reader =
         let all = reader
@@ -265,7 +269,7 @@ let dataReaderToSeqIsCacheable3 conn =
     using reader withReader
 
 let dataReaderWithLazyList conn =
-    insertUsers conn
+    insertUsers conn |> ignore
     let reader = Sql.execReader conn "select * from person" []
     let withReader reader =
         let all = reader
@@ -463,10 +467,10 @@ let ``compose tx`` () =
     let f2 m = Sql.execNonQueryF m "invalid sql statement" |> ignore
     let f2 = Tx.supported f2
     let finalTx mgr =
-        f1 mgr
+        f1 mgr |> ignore
         f2 mgr
     try
-        (Tx.required finalTx) c
+        (Tx.required finalTx) c |> ignore
         failtest "Tx should have failed"
     with e -> 
         logf "%s\n" e.Message
@@ -477,7 +481,7 @@ let ``tx required and never throw`` () =
     let f1 m = Sql.execNonQueryF m "insert into person (id,name) values (%d, %s)" 3 "one" |> ignore
     let f1 = f1 |> Tx.never |> Tx.required
     try
-        f1 c
+        f1 c |> ignore
         failtest "Tx should have failed"
     with e -> 
         logf "%s\n" e.Message
@@ -655,7 +659,7 @@ let ``tx monad trywith``() =
 let ``tx then no tx``() =
     let c = withMemDb()
     let t = txInsert 1 |> Tx.required >> Tx.get
-    t c
+    t c |> ignore
     let l = Sql.execReader c "select * from person" [] |> List.ofDataReader
     Assert.Equal("result count", 1, l.Length)
 
@@ -663,24 +667,24 @@ let ``can execute serialisable tx``() =
       let cm = withMemDb()
       let select_one m = Sql.execScalar m "select 1" []
       let select_one =
-        select_one
-        |> Tx.transactional2
-        |> Tx.transactionalWithIsolation IsolationLevel.Serializable
+        select_one |> Tx.transactionalWithIsolation IsolationLevel.Serializable
       let res = select_one cm
       Assert.Equal("Can execute tx", Tx.TxResult.Commit(Some 1L), res)
 
 let ``can execute serialisable tx 2``() =
-    let tx = Tx.TransactionBuilder()
+    let tx = Tx.TransactionBuilder(IsolationLevel.Serializable)
     let cm = withMemDb()
     let select_one = tx {
+        logf "executing 1"
         let! a = Tx.execScalar "select 1" []
         let a : int64 = Option.get a
+        logf "rolling back"
         do! Tx.rollback 3L
+        logf "executing 2"
         let! b = Tx.execScalar "select 1" []
         let b : int64 = Option.get b
         return a + b
     }
-    let select_one = select_one |> Tx.transactionalWithIsolation IsolationLevel.Serializable
     let res = select_one cm
     Assert.Equal("Can execute tx", Tx.TxResult.Rollback 3L, res)
 
@@ -715,24 +719,24 @@ let memDBTests = genTests withMemDb "(memory db)"
 
 let otherParallelizableTests = 
     [
-        ``tx then no tx``
-        ``tx monad trywith``
-        ``tx monad for with error``
-        ``tx monad for``
-        ``tx monad composable``
-        ``tx monad tryfinally``
-        ``tx monad rollback and zero``
-        ``tx monad using``
-        ``tx monad ok``
-        ``tx monad error rollback``
-        ``tx monad error``
-        ``map to pair``
-        ``map single field as option``
-        ``map single field``
-        ``asRecord throws with non-record type``
-        ``can execute serialisable tx``
-        ``can execute serialisable tx 2``
-    ] |> List.map TestCase
+        "tx then no tx", ``tx then no tx``
+        "tx monad trywith", ``tx monad trywith``
+        "tx monad for with error", ``tx monad for with error``
+        "tx monad for", ``tx monad for``
+        "tx monad composable", ``tx monad composable``
+        "tx monad tryfinally", ``tx monad tryfinally``
+        "tx monad rollback and zero", ``tx monad rollback and zero``
+        "tx monad using", ``tx monad using``
+        "tx monad ok", ``tx monad ok``
+        "tx monad error rollback", ``tx monad error rollback``
+        "tx monad error", ``tx monad error``
+        "map to pair", ``map to pair``
+        "map single field as option", ``map single field as option``
+        "map single field", ``map single field``
+        "asRecord throws with non-record type", ``asRecord throws with non-record type``
+        "can execute serialisable tx", ``can execute serialisable tx``
+        "can execute serialisable tx 2", ``can execute serialisable tx 2``
+    ] |> List.map (fun (name, f) -> Fuchu.Tests.testCase name f)
 
 let nonParallelizableTests = 
     [
