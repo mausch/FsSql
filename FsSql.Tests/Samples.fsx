@@ -141,20 +141,6 @@ sql.ExecReader leftJoinSql []
 exec "delete from animal"
 exec "delete from user"
 
-// composable transactions
-let txInsertUsers n = insertNUsers n |> Tx.required
-let txInsertOneUser = Tx.mandatory insertUser
-let insertAllUsers m = 
-    txInsertUsers 10 m
-    txInsertOneUser m 3 "John" None |> ignore
-let txInsertAllUsers = Tx.required insertAllUsers
-// run transaction, will fail due to duplicate PK
-try
-    txInsertAllUsers connMgr
-with e ->
-    printfn "Failed to insert all users:\n %s" e.Message
-printfn "Now there are %d users" (countUsers()) // will print 0
-
 // tx monad
 let tx = Tx.TransactionBuilder()
 let tran1() = tx {

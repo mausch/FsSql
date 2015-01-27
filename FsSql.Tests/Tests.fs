@@ -460,34 +460,22 @@ let ``map to triple`` () =
     Assert.Equal("name", "John", name)
     Assert.None("parent", parent)
 
+open Tx.Operators
+
+let tx = Tx.TransactionBuilder()
+
 let ``compose tx`` () = 
     let c = withNewDbFile()
     let f1 m = Sql.execNonQueryF m "insert into person (id,name) values (%d, %s)" 3 "one" |> ignore
-    let f1 = Tx.required f1
+    let f1 = f1 >> Tx.Commit
     let f2 m = Sql.execNonQueryF m "invalid sql statement" |> ignore
-    let f2 = Tx.supported f2
-    let finalTx mgr =
-        f1 mgr |> ignore
-        f2 mgr
-    try
-        (Tx.required finalTx) c |> ignore
-        failtest "Tx should have failed"
-    with e -> 
-        logf "%s\n" e.Message
-        Assert.Equal("user count", 0L, countUsers c)
-
-let ``tx required and never throw`` () = 
-    let c = withNewDbFile()
-    let f1 m = Sql.execNonQueryF m "insert into person (id,name) values (%d, %s)" 3 "one" |> ignore
-    let f1 = f1 |> Tx.never |> Tx.required
-    try
-        f1 c |> ignore
-        failtest "Tx should have failed"
-    with e -> 
-        logf "%s\n" e.Message
-        Assert.Equal("user count", 0L, countUsers c)
-
-let tx = Tx.TransactionBuilder()
+    let f2 = f2 >> Tx.Commit
+    let finalTx = f1 >>. f2
+    let result = tx.Run finalTx c
+    match result with
+    | Tx.Failed e -> ()
+    | x -> failtestf "expected tx failure, was %A" x
+    Assert.Equal("user count", 0L, countUsers c)
 
 let ``tx monad error`` () = 
     let c = withMemDb()
@@ -658,8 +646,7 @@ let ``tx monad trywith``() =
 
 let ``tx then no tx``() =
     let c = withMemDb()
-    let t = txInsert 1 |> Tx.required >> Tx.get
-    t c |> ignore
+    txInsert 1 c |> ignore
     let l = Sql.execReader c "select * from person" [] |> List.ofDataReader
     Assert.Equal("result count", 1, l.Length)
 
@@ -740,7 +727,6 @@ let otherParallelizableTests =
 
 let nonParallelizableTests = 
     [
-        ``tx required and never throw``
         ``compose tx``
         ``map to triple``
         ``map asRecord with prefix with more fields``

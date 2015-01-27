@@ -41,33 +41,6 @@ let transactionalWithIsolation (isolation: IsolationLevel) (f: ConnectionManager
 let transactional a = 
     transactionalWithIsolation IsolationLevel.Unspecified a
 
-/// If there is a running transaction, the function executes within this transaction.
-/// Otherwise, throws.
-let mandatory f (cmgr: ConnectionManager) =
-    match cmgr.tx with
-    | Some _ -> f cmgr
-    | None -> failwith "Transaction required!"
-
-/// If there is a running transaction, throws.
-/// Otherwise, the function executes without any transaction.
-let never f (cmgr: ConnectionManager) =
-    match cmgr.tx with
-    | Some _ -> failwith "Transaction present!"
-    | None -> f cmgr
-
-/// If there is a running transaction, the function executes within this transaction.
-/// Otherwise, the function executes without any transaction.
-let supported f cmgr = f cmgr
-
-/// If there is a running transaction, the function executes within this transaction.
-/// Otherwise, a new transaction is started and the function executes within this new transaction.
-let required f (cmgr: ConnectionManager) = 
-    let g = 
-        match cmgr.tx with
-        | None -> transactional
-        | _ -> fun f mgr -> Commit (f mgr)
-    (g f) cmgr
-
 //type M<'a,'b> = ConnectionManager -> TxResult<'a,'b>
 
 let bind f m =
