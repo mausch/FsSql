@@ -13,3 +13,26 @@ For general usage, see:
 * "A functional wrapper over ADO.NET":http://bugsquash.blogspot.com/2010/10/functional-wrapper-over-adonet.html
 * "A functional wrapper over ADO.NET part 2":http://bugsquash.blogspot.com/2010/10/functional-wrapper-over-adonet-part-2.html
 * "Sample code":https://github.com/mausch/FsSql/blob/master/FsSql.Tests/Samples.fsx
+
+Configuring logging:
+
+<pre><code>
+open System
+open System.Diagnostics
+
+open FsSql
+
+type MyLogger(name) =
+  interface Logging.Logger with
+    member x.Log line =
+      Debug.WriteLine (sprintf "%A" line)
+    member x.Debug fLine =
+      Debug.WriteLine (sprintf "%A" (fLine ()))
+    member x.Verbose fLine =
+      Debug.WriteLine (sprintf "%A" (fLine ()))
+
+Logging.configure (fun () -> DateTime.UtcNow.Ticks)
+                  (fun name -> new MyLogger(name))
+</code></pre>
+
+

@@ -2,8 +2,11 @@ module FsSqlPrelude
 
 open System
 open Microsoft.FSharp.Reflection
+open FsSql.Logging
 
-let log s = () // printfn "%A: %s" DateTime.Now s
+let private logger = FsSql.Logging.getLoggerByName "FsSql"
+
+let log s = Logger.debug logger (fun _ -> LogLine.message [] s)
 let logf a = Printf.kprintf log a
 
 let inline internal isNull a = LanguagePrimitives.PhysicalEquality a null
