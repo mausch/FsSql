@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>FsSql</id>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
     <title>FsSql</title>
     <authors>Mauricio Scheffer</authors>
     <owners>Mauricio Scheffer</owners>
