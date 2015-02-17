@@ -1,4 +1,4 @@
-﻿namespace Microsoft.FSharp.Reflection
+namespace Microsoft.FSharp.Reflection
 
 open System
 open System.Reflection

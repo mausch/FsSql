@@ -1,4 +1,4 @@
-﻿namespace FsSql
+namespace FsSql
 
 open System.Reflection
 open System.Runtime.CompilerServices

@@ -1,4 +1,4 @@
-﻿module List
+module List
 
 open System.Data
 

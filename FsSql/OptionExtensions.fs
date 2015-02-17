@@ -1,4 +1,4 @@
-﻿module Option
+module Option
 
 open System
 

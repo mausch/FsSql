@@ -1,4 +1,4 @@
-﻿module Tx
+module Tx
 
 open System
 open System.Data

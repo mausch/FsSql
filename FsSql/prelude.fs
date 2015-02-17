@@ -1,4 +1,4 @@
-﻿module FsSqlPrelude
+module FsSqlPrelude
 
 open System
 open Microsoft.FSharp.Reflection

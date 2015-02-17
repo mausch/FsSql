@@ -1,4 +1,4 @@
-﻿[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module Sql
 
 open System

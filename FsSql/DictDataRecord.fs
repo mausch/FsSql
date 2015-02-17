@@ -1,4 +1,4 @@
-﻿namespace FsSqlImpl
+namespace FsSqlImpl
 
 open System
 open System.Collections.Specialized

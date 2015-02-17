@@ -1,4 +1,4 @@
-﻿module Seq
+module Seq
 
 open System
 open System.Data

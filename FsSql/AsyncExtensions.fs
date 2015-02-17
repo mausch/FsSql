@@ -1,4 +1,4 @@
-﻿module FsSql.Async
+module FsSql.Async
 
 open System
 open System.Collections.Generic
