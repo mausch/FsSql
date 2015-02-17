@@ -1,4 +1,4 @@
-﻿[<AutoOpen>]
+[<AutoOpen>]
 module FsSqlOOWrapper
 
 type SqlWrapper(cmgr: Sql.ConnectionManager) =

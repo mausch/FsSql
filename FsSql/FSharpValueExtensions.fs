@@ -1,4 +1,4 @@
-﻿namespace Microsoft.FSharp.Reflection
+namespace Microsoft.FSharp.Reflection
 
 open System
 open System.Reflection
@@ -9,7 +9,7 @@ module FSharpValue =
     /// <summary>
     /// Creates a None option for type <paramref name="t"/>
     /// </summary>
-    let MakeOptionNone (t: Type) = 
+    let MakeOptionNone (t: Type) =
         let opt = FSharpType.MakeOptionType t
         opt.InvokeMember("None", BindingFlags.Public ||| BindingFlags.Static ||| BindingFlags.GetProperty, null, null, null)
 
@@ -26,7 +26,7 @@ module FSharpValue =
     /// <exception cref="System.NullReferenceException"><paramref value="opt"/> is null</exception>
     /// <exception cref="System.ArgumentException"><paramref value="opt"/> is not an option</exception>
     let GetOptionValue (opt: obj) =
-        if opt = null 
+        if opt = null
             then nullArg "opt"
         let t = opt.GetType()
         if not (FSharpType.IsOption t)
@@ -61,7 +61,7 @@ module FSharpValue =
     /// OptionType if value to match is a boxed Option, otherwise NotOptionType
     /// </summary>
     /// <exception cref="System.ArgumentException">Argument is not an option</exception>
-    let (|OptionType|NotOptionType|) x = 
+    let (|OptionType|NotOptionType|) x =
         if IsOption x
             then OptionType
             else NotOptionType
@@ -77,7 +77,7 @@ module FSharpValue =
 
     let UnwrapOption (t: Type) (o: obj option) =
         let isOption = FSharpType.IsOption t
-        let underlyingType = 
+        let underlyingType =
             if isOption
                 then t.GetGenericArguments().[0]
                 else null
@@ -88,6 +88,6 @@ module FSharpValue =
         | Some x, true -> MakeOptionSome underlyingType x
         | Some x, false -> x
 
-    let UnwrapOptionT<'a> (o: obj option): 'a = 
+    let UnwrapOptionT<'a> (o: obj option): 'a =
         unbox <| UnwrapOption typeof<'a> o
 

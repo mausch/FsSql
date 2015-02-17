@@ -1,4 +1,4 @@
-﻿namespace FsSqlImpl
+namespace FsSqlImpl
 
 open System
 open System.Collections.Specialized
@@ -13,7 +13,7 @@ type internal Entry = {
 }
 
 type internal DictDataRecord(dr: IDataRecord) =
-    let dic = 
+    let dic =
         let x = OrderedDictionary(StringComparer.InvariantCultureIgnoreCase)
         for i in [0..dr.FieldCount-1] do
             let name = dr.GetName i
@@ -25,7 +25,7 @@ type internal DictDataRecord(dr: IDataRecord) =
                     fieldType = dr.GetFieldType i}
             try
                 x.Add(name, entry)
-            with :? ArgumentException as e -> 
+            with :? ArgumentException as e ->
                 raise <| ArgumentException("Duplicate field names in resultset", e)
         x
 
@@ -72,7 +72,7 @@ type internal DictDataRecord(dr: IDataRecord) =
         member x.GetOrdinal name = (dic.[name] :?> Entry).index
         member x.GetString i = getValueOrDefault i
         member x.GetValue i = getValueOrDefault i
-        member x.GetValues values = 
+        member x.GetValues values =
             if values = null
                 then nullArg "values"
             let count = min values.Length dic.Count
@@ -81,7 +81,7 @@ type internal DictDataRecord(dr: IDataRecord) =
             count
         member x.IsDBNull i = (getValueOrDefault i) = DBNull.Value
         member x.FieldCount with get() = dic.Count
-        member x.Item 
+        member x.Item
             with get (name: string) : obj = getValueOrDefaultByName name
-        member x.Item 
+        member x.Item
             with get (i: int) : obj = getValueOrDefault i

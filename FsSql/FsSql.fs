@@ -1,4 +1,4 @@
-﻿[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module Sql
 
 open System
@@ -18,7 +18,7 @@ type ConnectionManager = {
     dispose: IDbConnection -> unit
     tx: IDbTransaction option
     setupCommand: IDbCommand -> unit
-} with 
+} with
     static member make(create, dispose, ?tx, ?setupCommand) =
         { create = create
           dispose = dispose
@@ -28,7 +28,7 @@ type ConnectionManager = {
 /// Creates a <see cref="ConnectionManager"/> with an externally-owned connection
 let withConnection (conn: IDbConnection) : ConnectionManager =
     let id = Guid.NewGuid().ToString()
-    let create() = 
+    let create() =
         logf "creating connection from const %s" id
         conn
     let dispose c = logf "disposing connection (but not really) %s" id
@@ -37,30 +37,30 @@ let withConnection (conn: IDbConnection) : ConnectionManager =
 /// Creates a <see cref="ConnectionManager"/> with an externally-owned transaction
 let withTransaction (tx: IDbTransaction): ConnectionManager =
     let id = Guid.NewGuid().ToString()
-    let create() = 
+    let create() =
         logf "creating connection from const %s" id
         tx.Connection
     let dispose c = logf "disposing connection (but not really) %s" id
     ConnectionManager.make(create, dispose, tx)
 
 /// Creates a <see cref="ConnectionManager"/> with an owned connection
-let withNewConnection (create: unit -> IDbConnection) : ConnectionManager = 
+let withNewConnection (create: unit -> IDbConnection) : ConnectionManager =
     let id = Guid.NewGuid().ToString()
     let create() =
         logf "creating connection %s" id
         create()
-    let dispose (c: IDisposable) = 
+    let dispose (c: IDisposable) =
         c.Dispose()
         logf "disposing connection %s" id
     ConnectionManager.make(create, dispose)
 
-let internal withCreateConnection (create: unit -> IDbConnection) : ConnectionManager = 
+let internal withCreateConnection (create: unit -> IDbConnection) : ConnectionManager =
     let dispose x = ()
     ConnectionManager.make(create, dispose)
 
 let internal doWithConnection (cmgr: ConnectionManager) f =
     withResource cmgr.create cmgr.dispose f
-    
+
 let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfFormat<'a, _, _, 'd>) : 'a =
     if not (FSharpType.IsFunction typeof<'a>) then
         let result = worker (query.Value, [])
@@ -81,16 +81,16 @@ let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfF
             let id = Guid.NewGuid().ToString()
             let values = a::values
             match types with
-            | [x;y] -> 
+            | [x;y] ->
                 let result = worker (query.Value, List.rev values)
                 box result
-            | x::y::z::xs -> 
+            | x::y::z::xs ->
                 let cont = proc (y::z::xs) values
                 let ft = makeFunctionType (y::z::xs)
                 let cont = FSharpValue.MakeFunction(ft, cont)
                 box cont
             | _ -> failwith "shouldn't happen"
-        
+
         let handler = proc types []
         unbox (FSharpValue.MakeFunction(typeof<'a>, handler))
 
@@ -102,7 +102,7 @@ let internal sqlProcessor (cmgr: ConnectionManager) (withCmd: IDbCommand -> IDbC
             sprintf "@p%d" !i
         Regex.Replace(s, "%.", eval)
     let sql = stripFormatting sql
-    let sqlProcessor' (conn: IDbConnection) = 
+    let sqlProcessor' (conn: IDbConnection) =
         use cmd = conn.CreateCommand()
         cmd.CommandText <- sql
         cmd.Transaction <- Option.getOrDefault cmgr.tx
@@ -117,14 +117,14 @@ let internal sqlProcessor (cmgr: ConnectionManager) (withCmd: IDbCommand -> IDbC
         withCmd cmd conn
     doWithConnection cmgr sqlProcessor'
 
-let internal sqlProcessorToDataReader (cmgr: ConnectionManager) b = 
-    let exec (cmd: IDbCommand) (conn: IDbConnection) = 
+let internal sqlProcessorToDataReader (cmgr: ConnectionManager) b =
+    let exec (cmd: IDbCommand) (conn: IDbConnection) =
         let dispose() = cmgr.dispose conn
         new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
     sqlProcessor (withCreateConnection cmgr.create) exec b
 
 let internal sqlProcessorNonQuery a b =
-    let exec (cmd: IDbCommand) x = 
+    let exec (cmd: IDbCommand) x =
         cmd.ExecuteNonQuery()
     sqlProcessor a exec b
 
@@ -155,7 +155,7 @@ let addParameter (cmd: #IDbCommand) (p: Parameter) =
     | None -> ()
     par.Direction <- p.Direction
     par.ParameterName <- p.ParameterName
-    par.Value <- 
+    par.Value <-
         match p.Value with
         | null -> box DBNull.Value
         | FSharpValue.OptionType -> optionToDBNull p.Value
@@ -163,7 +163,7 @@ let addParameter (cmd: #IDbCommand) (p: Parameter) =
     cmd.Parameters.Add par |> ignore
 
 /// Creates an IDbCommand
-let createCommand (cmgr: ConnectionManager) = 
+let createCommand (cmgr: ConnectionManager) =
     let conn = cmgr.create()
     let cmd = conn.CreateCommand()
     cmd.Transaction <- Option.getOrDefault cmgr.tx
@@ -180,11 +180,11 @@ let internal prepareCommand (connection: #IDbConnection) (tx: IDbTransaction opt
     parameters |> Seq.iter (addParameter cmd)
     cmd
 
-let internal inferParameterDbType (p: string * obj) = 
+let internal inferParameterDbType (p: string * obj) =
     Parameter.make(fst p, snd p)
 
 /// Creates a list of parameters
-let parameters (p: #seq<string * obj>) = 
+let parameters (p: #seq<string * obj>) =
     p |> Seq.map inferParameterDbType
 
 let paramsFromDict (p: #IDictionary<string, obj>) =
@@ -194,15 +194,15 @@ let paramsFromDict (p: #IDictionary<string, obj>) =
 let internal execReaderInternal (exec: IDbCommand -> (unit -> unit) -> 'a) cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
     let connection = cmgr.create()
     let cmd = prepareCommand connection cmgr.tx sql cmdType parameters
-    let dispose() = 
+    let dispose() =
         cmd.Dispose()
         cmgr.dispose connection
     exec cmd dispose
 
-let internal execReaderWrap (cmd: #IDbCommand) dispose = 
+let internal execReaderWrap (cmd: #IDbCommand) dispose =
     new DataReaderWrapper(cmd.ExecuteReader(), dispose) :> IDataReader
 
-let internal execReaderAsyncWrap (cmd: #IDbCommand) dispose = 
+let internal execReaderAsyncWrap (cmd: #IDbCommand) dispose =
     let ops = getAsyncOpsForCommand cmd
     async {
         let! r = ops.execReader cmd
@@ -223,7 +223,7 @@ let asyncExecSPReader connMgr = execReaderInternal execReaderAsyncWrap CommandTy
 
 /// Executes and returns the number of rows affected
 let internal execNonQueryInternal (exec: IDbCommand -> 'a) cmdType (cmgr: ConnectionManager) (sql: string) (parameters: #seq<Parameter>) =
-    let execNonQuery' connection = 
+    let execNonQuery' connection =
         use cmd = prepareCommand connection cmgr.tx sql cmdType parameters
         exec cmd
     doWithConnection cmgr execNonQuery'
@@ -236,7 +236,7 @@ let execNonQuery connMgr = execNonQueryInternal execNonQueryExec CommandType.Tex
 /// Executes a stored procedure and returns the number of rows affected
 let execSPNonQuery connMgr = execNonQueryInternal execNonQueryExec CommandType.StoredProcedure connMgr
 
-let internal execNonQueryAsync (cmd: #IDbCommand) = 
+let internal execNonQueryAsync (cmd: #IDbCommand) =
     let ops = getAsyncOpsForCommand cmd
     ops.execNonQuery cmd
 
@@ -259,10 +259,10 @@ let readField (field: string) (record: #IDataRecord) : 'a option =
         raise <| Exception(msg, e)
 
 /// Reads an integer field from a <see cref="IDataRecord"/>, returns None if null, otherwise Some x
-let readInt : string -> #IDataRecord -> int option = readField 
+let readInt : string -> #IDataRecord -> int option = readField
 
 /// Reads a string field from a <see cref="IDataRecord"/>, returns None if null, otherwise Some x
-let readString : string -> #IDataRecord -> string option = readField 
+let readString : string -> #IDataRecord -> string option = readField
 
 /// Maps a <see cref="IDataReader"/> as a scalar result
 let mapScalar (dr: #IDataReader) =
@@ -304,7 +304,7 @@ let execReaderWith connMgr sql param mapper = execReader connMgr sql param |> ma
 
 /// Maps a datareader's first row
 let mapFirst mapper datareader =
-    let r = datareader 
+    let r = datareader
             |> map mapper
             |> Seq.truncate 1
             |> Seq.toList
@@ -328,7 +328,7 @@ let asNameValue (r: IDataRecord) =
 let asMap r = r |> asNameValue |> Map.ofSeq
 
 /// Maps a row as a dictionary of name,value
-let asDict r = 
+let asDict r =
     let values = r |> asNameValue
     let d = Dictionary(StringComparer.InvariantCultureIgnoreCase)
     for k,v in values do
@@ -336,7 +336,7 @@ let asDict r =
     d
 
 /// Maps a single field (with position i) from a row.
-let asScalari<'a> (i: int) (r: IDataRecord): 'a = 
+let asScalari<'a> (i: int) (r: IDataRecord): 'a =
     let v = Option.fromDBNull r.[i]
     FSharpValue.UnwrapOptionT<'a> v
 
@@ -344,7 +344,7 @@ let asScalari<'a> (i: int) (r: IDataRecord): 'a =
 let asScalar r = asScalari 0 r
 
 /// Maps the first 2 fields from a row as a tuple
-let asPair<'a,'b> = 
+let asPair<'a,'b> =
     let s1 = asScalari<'a> 0
     let s2 = asScalari<'b> 1
     fun r -> s1 r, s2 r
@@ -353,7 +353,7 @@ let asPair<'a,'b> =
 let asTuple2<'a,'b> : IDataRecord -> 'a * 'b = asPair
 
 /// Maps the first 3 fields from a row as a tuple
-let asTriple<'a,'b,'c> = 
+let asTriple<'a,'b,'c> =
     let s1 = asScalari<'a> 0
     let s2 = asScalari<'b> 1
     let s3 = asScalari<'c> 2
@@ -363,7 +363,7 @@ let asTriple<'a,'b,'c> =
 let asTuple3<'a,'b,'c> : IDataRecord -> 'a * 'b * 'c = asTriple
 
 /// Maps the first 4 fields from a row as a tuple
-let asTuple4<'a,'b,'c,'d> = 
+let asTuple4<'a,'b,'c,'d> =
     let s1 = asScalari<'a> 0
     let s2 = asScalari<'b> 1
     let s3 = asScalari<'c> 2
@@ -371,7 +371,7 @@ let asTuple4<'a,'b,'c,'d> =
     fun r -> s1 r, s2 r, s3 r, s4 r
 
 /// <summary>
-/// Converts a mapper into an optional mapper. 
+/// Converts a mapper into an optional mapper.
 /// Intended to be used when mapping nullable joined tables
 /// </summary>
 /// <param name="fieldName">Field to use to check for null entity</param>
@@ -381,23 +381,23 @@ let optionalBy fieldName mapper r =
     | _ -> Some (mapper r)
 
 /// Gets all field names from a record type
-let recordFields t = 
+let recordFields t =
     FSharpType.GetRecordFields t |> Array.map (fun p -> p.Name)
 
-let internal strEq (a: string) (b: string) = 
+let internal strEq (a: string) (b: string) =
     StringComparer.InvariantCultureIgnoreCase.Equals(a, b)
 
 /// Maps a datarecord to a record 'a using an optional prefix for record field names
-let asRecord<'a> = 
+let asRecord<'a> =
     let createRecord = FSharpValue.PreComputeRecordConstructor(typeof<'a>)
     let make values = (createRecord values) :?> 'a
     let fields = FSharpType.GetRecordFields typeof<'a>
     let fieldNames = fields |> Array.map (fun p -> p.Name)
     let findIndex item = Array.findIndex (strEq item)
-    let setOptionTypes ((_, y: obj), p: PropertyInfo) = 
+    let setOptionTypes ((_, y: obj), p: PropertyInfo) =
         FSharpValue.UnwrapOption p.PropertyType (Option.fromDBNull y)
     fun (prefix: string) ->
-        let addPrefix n = 
+        let addPrefix n =
             if String.IsNullOrEmpty prefix
                 then n
                 else sprintf "%s_%s" prefix n
@@ -421,19 +421,19 @@ let asRecord<'a> =
 
 
 /// Gets all field values from a record
-let recordValues o = 
-    FSharpType.GetRecordFields (o.GetType()) 
+let recordValues o =
+    FSharpType.GetRecordFields (o.GetType())
     |> Seq.map (fun f -> f.GetValue(o, null))
 
-let internal fieldAlias alias = 
+let internal fieldAlias alias =
     Array.map (fun s -> sprintf "%s.%s %s_%s" alias s alias s)
 
-let internal sjoin (sep: string) (strings: string[]) = 
+let internal sjoin (sep: string) (strings: string[]) =
     String.Join(sep, strings)
 
 /// Gets all field names from a record type formatted with an alias.
 /// E.g. with a field "id" and alias "a", returns "a.id a_id"
-let recordFieldsAlias ty = 
+let recordFieldsAlias ty =
     let fields = recordFields ty
     fun alias ->
         fields |> fieldAlias alias |> sjoin ","
