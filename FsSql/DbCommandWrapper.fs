@@ -90,4 +90,3 @@ type DbCommandWrapper(cmd: IDbCommand) as this =
         member x.UpdatedRowSource
             with get() = this.UpdatedRowSource
             and set v = this.UpdatedRowSource <- v
-            

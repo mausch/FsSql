@@ -55,4 +55,3 @@ type DbConnectionWrapper(conn: IDbConnection) as this =
         member x.Open() = this.Open()
         member x.State = this.State
         
-        
