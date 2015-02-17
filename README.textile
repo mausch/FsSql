@@ -4,7 +4,6 @@ Features:
 * Connection management
 * DBNull @<->@ option type conversion
 * Async calls
-* Composable J2EE-like transaction modifiers
 * Transaction computation expression
 * Composable mapping functions
  
