@@ -37,13 +37,13 @@ let chooseSnd s = mapSnd (Seq.choose id) s
 
 /// Groups a pair sequence by the first element in each tuple
 let groupByFst sequence =
-    sequence 
+    sequence
     |> Seq.groupBy fst
     |> mapSndMap snd
-    
+
 /// Groups a 3-tuple sequence by the 2 first elements in each tuple
 let groupByFstSnd sequence =
-    sequence 
+    sequence
     |> Seq.groupBy (fun (a,b,_) -> a,b)
     |> mapSndMap (fun (_,_,x) -> x)
 

@@ -60,7 +60,7 @@ type DbCommandWrapper(cmd: IDbCommand) as this =
     default x.UpdatedRowSource
         with get() = cmd.UpdatedRowSource
         and set v = cmd.UpdatedRowSource <- v
- 
+
     interface IDbCommand with
         member x.Cancel() = this.Cancel()
         member x.CreateParameter() = this.CreateParameter()
@@ -82,7 +82,7 @@ type DbCommandWrapper(cmd: IDbCommand) as this =
         member x.Connection
             with get() = this.Connection
             and set v = this.Connection <- v
-        member x.Parameters 
+        member x.Parameters
             with get() = this.Parameters
         member x.Transaction
             with get() = this.Transaction

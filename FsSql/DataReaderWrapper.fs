@@ -6,7 +6,7 @@ open FsSqlPrelude
 type internal DataReaderWrapper(dr: IDataReader, dispose: unit -> unit) =
     interface IDataReader with
         member x.Close() = dr.Close()
-        member x.Dispose() = 
+        member x.Dispose() =
             log "DataReaderWrapper dispose"
             if not (dr.IsClosed)
                 then dr.Dispose()
@@ -40,7 +40,7 @@ type internal DataReaderWrapper(dr: IDataReader, dispose: unit -> unit) =
         member x.Depth with get() = dr.Depth
         member x.IsClosed with get() = dr.IsClosed
         member x.RecordsAffected with get() = dr.RecordsAffected
-        member x.Item 
+        member x.Item
             with get (name: string) : obj = dr.[name]
-        member x.Item 
+        member x.Item
             with get (i: int) : obj = dr.[i]

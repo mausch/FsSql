@@ -48,10 +48,10 @@ type DbConnectionWrapper(conn: IDbConnection) as this =
         member x.ConnectionString
             with get (): string = this.ConnectionString
             and set (v: string): unit = this.ConnectionString <- v
-        member x.ConnectionTimeout = this.ConnectionTimeout        
+        member x.ConnectionTimeout = this.ConnectionTimeout
         member x.CreateCommand(): IDbCommand = this.CreateCommand()
-        member x.Database = this.Database        
+        member x.Database = this.Database
         member x.Dispose() = this.Dispose()
         member x.Open() = this.Open()
         member x.State = this.State
-        
+

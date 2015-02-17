@@ -4,7 +4,7 @@ open System
 
 /// Maps DBNull to None, otherwise Some x
 let fromDBNull (o: obj): 'a option =
-    try 
+    try
         if o = null || DBNull.Value.Equals o
             then None
             else Some (unbox o)
@@ -22,5 +22,5 @@ let toDBNull =
 let getOrDefault x =
     defaultArg x Unchecked.defaultof<'a>
 
-let fromBool b = 
+let fromBool b =
     if b then Some() else None

@@ -7,14 +7,14 @@ open FsSqlPrelude
 open Microsoft.FSharp.Reflection
 
 /// Transaction result
-type TxResult<'a,'b> = 
+type TxResult<'a,'b> =
     /// Transaction committed successfully
-    | Commit of 'a 
+    | Commit of 'a
     /// Transaction manually rolled back
     | Rollback of 'b
     /// Transaction failed due to an exception and was rolled back
     | Failed of exn
-        
+
 /// Wraps a function in a transaction with the specified <see cref="IsolationLevel"/>
 let transactionalWithIsolation (isolation: IsolationLevel) (f: ConnectionManager -> 'a) (cmgr: ConnectionManager) : TxResult<'a, 'b> =
     let transactionalWithIsolation' (conn: IDbConnection) =
@@ -38,7 +38,7 @@ let transactionalWithIsolation (isolation: IsolationLevel) (f: ConnectionManager
     doWithConnection cmgr transactionalWithIsolation'
 
 /// Wraps a function in a transaction
-let transactional a = 
+let transactional a =
     transactionalWithIsolation IsolationLevel.Unspecified a
 
 //type M<'a,'b> = ConnectionManager -> TxResult<'a,'b>
@@ -50,10 +50,10 @@ let bind f m =
             | Commit a -> f a cmgr
             | Rollback a -> Rollback a
             | Failed e -> Failed e
-        with e -> 
+        with e ->
             Failed e
 
-let inline mreturn a = 
+let inline mreturn a =
     fun (cmgr: ConnectionManager) -> Commit a
 
 let inline combine m2 m1 =
@@ -72,7 +72,7 @@ type TransactionBuilder(?isolation: IsolationLevel) =
 
     member x.For(sequence, f) =
         fun (cmgr: ConnectionManager) ->
-            let folder result element = 
+            let folder result element =
                 try
                     match result with
                     | Commit() -> f element cmgr
@@ -80,37 +80,37 @@ type TransactionBuilder(?isolation: IsolationLevel) =
                     | Failed ex -> Failed ex
                 with ex -> Failed ex
 
-            sequence 
+            sequence
             |> Seq.fold folder (Commit())
 
-    member x.TryFinally(m: ConnectionManager -> TxResult<_,_>, f: unit -> unit) = 
+    member x.TryFinally(m: ConnectionManager -> TxResult<_,_>, f: unit -> unit) =
         fun (cmgr: ConnectionManager) ->
             try
                 m cmgr
             finally
                 f()
 
-    member x.Using(a: #IDisposable, f) = 
+    member x.Using(a: #IDisposable, f) =
         let dispose() = if a <> null then a.Dispose()
         x.TryFinally(f a, dispose)
 
 (*
-    member x.While(cond: unit -> bool, m: ConnectionManager -> TxResult<_,_>) = 
+    member x.While(cond: unit -> bool, m: ConnectionManager -> TxResult<_,_>) =
         //let s = Seq.initInfinite (fun _ -> cond()) |> Seq.takeWhile id
         let s = Seq.unfold (fun s -> if cond() then Some((),s) else None) (Some())
         let f i c = m c
         x.For(s, f)
 *)
 
-    member x.TryWith(m, handler) = 
+    member x.TryWith(m, handler) =
         fun (cmgr: ConnectionManager) ->
             match m cmgr with
             | Commit a -> Commit a
             | Rollback a -> Rollback a
-            | Failed e -> handler e cmgr            
+            | Failed e -> handler e cmgr
 
     member x.Run (f: ConnectionManager -> TxResult<'a,_>) =
-        let subscribe (tx: IDbTransaction) (onCommit: IDbTransaction -> 'a -> TxResult<'a,_>) = 
+        let subscribe (tx: IDbTransaction) (onCommit: IDbTransaction -> 'a -> TxResult<'a,_>) =
             let r = f (withTransaction tx)
             match r with
             | Commit a -> onCommit tx a
@@ -124,45 +124,45 @@ type TransactionBuilder(?isolation: IsolationLevel) =
         let transactional (conn: IDbConnection) =
             let il = defaultArg isolation IsolationLevel.Unspecified
             let tx = conn.BeginTransaction(il)
-            let onCommit (tran: IDbTransaction) result = 
+            let onCommit (tran: IDbTransaction) result =
                 tran.Commit()
                 Commit result
             subscribe tx onCommit
 
-        fun cmgr -> 
+        fun cmgr ->
             match cmgr.tx with
             | None -> doWithConnection cmgr transactional
             | Some t -> subscribe t (fun _ -> Commit)
 
 /// Executes a SQL statement and returns the number of rows affected.
 /// For use within a tx monad.
-let execNonQuery sql parameters mgr = 
+let execNonQuery sql parameters mgr =
     Sql.execNonQuery mgr sql parameters |> Commit
 
 /// Executes a SQL statement.
 /// For use within a tx monad.
-let execNonQueryi sql parameters mgr = 
+let execNonQueryi sql parameters mgr =
     Sql.execNonQuery mgr sql parameters |> ignore |> Commit
 
 // TODO, problematic
-//let execNonQueryF sql parameters mgr = 
+//let execNonQueryF sql parameters mgr =
 //    Sql.execNonQueryF mgr sql parameters |> Success
 
 /// Executes a query and returns a data reader.
 /// For use within a tx monad.
-let execReader sql parameters mgr = 
+let execReader sql parameters mgr =
     Sql.execReader mgr sql parameters |> Commit
 
 /// Executes a query and returns a scalar.
 /// For use within a tx monad.
-let execScalar sql parameters mgr = 
+let execScalar sql parameters mgr =
     Sql.execScalar mgr sql parameters |> Commit
 
 /// Rolls back the transaction.
 /// For use within a tx monad.
 let rollback a (mgr: ConnectionManager) = Rollback a
 
-let map f m = 
+let map f m =
     fun (conn: ConnectionManager) ->
         match m conn with
         | Commit a -> f a |> Commit
@@ -180,6 +180,6 @@ let toOption =
     | Commit x -> Some x
     | _ -> None
 
-module Operators = 
+module Operators =
     let inline (>>=) f x = bind x f
     let inline (>>.) f x = bind (fun _ -> x) f

@@ -25,7 +25,7 @@ type SqlCommand with
         let acancel = cmd.Cancel
         Async.FromBeginEnd(abegin, aend, acancel)
 
-let inline asyncExecNonQuery cmd = 
+let inline asyncExecNonQuery cmd =
     let abegin (a,b:obj)= (^a: (member BeginExecuteNonQuery: AsyncCallback*obj -> IAsyncResult) (cmd,a,b))
     let aend a = (^a: (member EndExecuteNonQuery: IAsyncResult -> int) (cmd,a))
     let acancel () = (^a: (member Cancel: unit -> unit) (cmd))
@@ -42,33 +42,33 @@ let inline asyncExecXmlReader cmd =
     let aend a = (^a: (member EndExecuteXmlReader: IAsyncResult -> XmlReader) (cmd,a))
     let acancel () = (^a: (member Cancel: unit -> unit) (cmd))
     Async.FromBeginEnd(abegin, aend, acancel)
-    
-type IAsyncOps = 
+
+type IAsyncOps =
     abstract execNonQuery: IDbCommand -> int Async
     abstract execReader: IDbCommand -> IDataReader Async
 
 let AsyncOpsRegistry = Dictionary<Type, IAsyncOps>()
 
-let SqlClientAsyncOps = 
+let SqlClientAsyncOps =
     { new IAsyncOps with
         member x.execNonQuery cmd = asyncExecNonQuery (cmd :?> SqlCommand)
-        member x.execReader cmd = 
+        member x.execReader cmd =
                     async {
                         let! r = asyncExecReader (cmd :?> SqlCommand)
                         return upcast r
                     } }
 
-let FakeAsyncOps = 
+let FakeAsyncOps =
     { new IAsyncOps with
-        member x.execNonQuery cmd = 
+        member x.execNonQuery cmd =
             async { return cmd.ExecuteNonQuery() }
-        member x.execReader cmd = 
+        member x.execReader cmd =
             async { return cmd.ExecuteReader() }
     }
 
 AsyncOpsRegistry.Add(typeof<SqlCommand>, SqlClientAsyncOps)
 
-let getAsyncOpsForCommand (cmd: #IDbCommand) = 
+let getAsyncOpsForCommand (cmd: #IDbCommand) =
     match AsyncOpsRegistry.TryGetValue (cmd.GetType()) with
     | false,_ -> FakeAsyncOps
     | true,m -> m
