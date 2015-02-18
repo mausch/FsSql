@@ -3,8 +3,16 @@
 open System
 open System.Collections.Generic
 open System.Data
-open System.Data.SQLite
 open Microsoft.FSharp.Reflection
+
+#if __MonoSQL__
+open Mono.Data.Sqlite
+type SQLiteConnection = SqliteConnection
+type SQLiteException = SqliteException
+#else
+open System.Data.SQLite
+#endif
+
 
 let createConnection() =
     let conn = new SQLiteConnection("Data Source=test.db;Version=3;New=True;")

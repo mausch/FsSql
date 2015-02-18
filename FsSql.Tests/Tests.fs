@@ -4,7 +4,15 @@ open Fuchu
 open System
 open System.Collections.Generic
 open System.Data
+
+#if __MonoSQL__
+open Mono.Data.Sqlite
+type SQLiteConnection = SqliteConnection
+type SQLiteException = SqliteException
+#else
 open System.Data.SQLite
+#endif
+
 open System.IO
 open System.Linq
 open System.Reflection
@@ -17,12 +25,12 @@ open FSharpx.Collections
 let P = Sql.Parameter.make
 
 let createConnection() =
-    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=:memory:;Version=3;New=True")
+    let conn = new SQLiteConnection("Data Source=:memory:;Version=3;New=True")
     conn.Open()
     conn :> IDbConnection
 
 let createPersistentConnection() =
-    let conn = new System.Data.SQLite.SQLiteConnection("Data Source=test.db;Version=3;New=True;Pooling=false;Max Pool Size=0;")
+    let conn = new SQLiteConnection("Data Source=test.db;Version=3;New=True;Pooling=false;Max Pool Size=0;")
     conn.Open()
     conn :> IDbConnection
 

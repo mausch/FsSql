@@ -33,6 +33,9 @@
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\Release\FsSql.Tests.XML</DocumentationFile>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <DefineConstants>$(DefineConstants);__MonoSQL__</DefineConstants>
+  </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
