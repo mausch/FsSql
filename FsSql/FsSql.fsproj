@@ -6,7 +6,7 @@
     <ProjectGuid>{F2570DA4-5DF1-4D5E-9534-B3F55606B3B5}</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>FsSql</RootNamespace>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>    
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <AssemblyName>FsSql</AssemblyName>
     <Name>FsSql</Name>
     <TargetFrameworkProfile />
@@ -51,6 +51,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="FSharpTypeExtensions.fs" />
     <Compile Include="FSharpValueExtensions.fs" />
+    <Compile Include="Logging.fs" />
     <Compile Include="prelude.fs" />
     <Compile Include="AsyncExtensions.fs" />
     <Compile Include="OptionExtensions.fs" />
@@ -74,7 +75,7 @@
     <Reference Include="FSharp.Core" Condition="$(TargetFrameworkVersion) != 'v2.0'">
       <HintPath>..\packages\FSharp.Core.3.1.2.1\lib\net40\FSharp.Core.dll</HintPath>
     </Reference>
-    <Reference Include="FSharp.Core, Version=2.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" Condition="$(TargetFrameworkVersion) == 'v2.0'">
+    <Reference Include="FSharp.Core" Condition="$(TargetFrameworkVersion) == 'v2.0'">
       <Private>True</Private>
     </Reference>
   </ItemGroup>
