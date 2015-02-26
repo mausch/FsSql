@@ -1,5 +1,5 @@
-﻿#r "bin\debug\FsSql.dll"
-#r "bin\debug\System.Data.SQlite.dll"
+﻿#r "bin/Debug/FsSql.dll"
+#r "bin/Debug/System.Data.SQlite.dll"
 
 open System
 open System.Data
