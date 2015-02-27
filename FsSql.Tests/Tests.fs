@@ -687,26 +687,26 @@ let ``can execute serialisable tx 2``() =
 
 let connMgrTests = 
     [
-        insertThenGet, "insert then get"
-        findNonExistentRecord, "find non existent record"
-        findExistentRecord, "find existent record"
-        getMany, "select all truncate 10"
-        transactionWithException, "transaction with exception"
-        transactionCommitted, "transaction committed"
-        nestedTransactionsAreNotSupported, "nested transactions are not supported"
-        transactionWithOption, "transaction with option"
-        dataReaderIsParallelizable, "datareader is parallelizable"
-        dataReaderToSeqIsForwardOnly, "datareader to seq is forward only"
+        "insert then get", insertThenGet
+        "find non existent record", findNonExistentRecord
+        "find existent record", findExistentRecord
+        "select all truncate 10", getMany
+        "transaction with exception", transactionWithException
+        "transaction committed", transactionCommitted
+        "nested transactions are not supported", nestedTransactionsAreNotSupported
+        "transaction with option", transactionWithOption
+        "datareader is parallelizable", dataReaderIsParallelizable
+        "datareader to seq is forward only", dataReaderToSeqIsForwardOnly
         //dataReaderToSeqIsCacheable, "dataReaderToSeqIsCacheable"
         //dataReaderToSeqIsCacheable2, "dataReaderToSeqIsCacheable2"
         //dataReaderToSeqIsCacheable3, "dataReaderToSeqIsCacheable3"
-        dataReaderWithLazyList, "datareader with lazy list"
+        "datareader with lazy list", dataReaderWithLazyList
     ]
 
 open Fuchu
 
 let genTests conn suffix = 
-    [ for test,name in connMgrTests ->
+    [ for name, test in connMgrTests ->
         testCase (name + " " + suffix) (fun () -> conn() |> test) ]
 
 let persistentDBTests = genTests withNewDbFile "(file db)"
