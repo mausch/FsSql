@@ -110,29 +110,31 @@ type TransactionBuilder(?isolation: IsolationLevel) =
             | Failed e -> handler e cmgr
 
     member x.Run (f: ConnectionManager -> TxResult<'a,_>) =
-        let subscribe (tx: IDbTransaction) (onCommit: IDbTransaction -> 'a -> TxResult<'a,_>) =
+        let subscribe (tx: IDbTransaction) (onCommit: IDbTransaction -> 'a -> unit) (onRollback: IDbTransaction -> _ -> unit) (onFailed: IDbTransaction -> _ -> unit) =
             let r = f (withTransaction tx)
             match r with
-            | Commit a -> onCommit tx a
+            | Commit a -> 
+                onCommit tx a
+                Commit a
             | Rollback a ->
-                tx.Rollback()
+                onRollback tx a
                 Rollback a
             | Failed e ->
-                tx.Rollback()
+                onFailed tx e
                 Failed e
 
         let transactional (conn: IDbConnection) =
             let il = defaultArg isolation IsolationLevel.Unspecified
             let tx = conn.BeginTransaction(il)
-            let onCommit (tran: IDbTransaction) result =
-                tran.Commit()
-                Commit result
-            subscribe tx onCommit
+            let onCommit (tran: IDbTransaction) _ = tran.Commit()
+            let onRollback (tran: IDbTransaction) _ = tran.Rollback()
+            let onFailed (tran: IDbTransaction) _ = tran.Rollback()
+            subscribe tx onCommit onRollback onFailed
 
         fun cmgr ->
             match cmgr.tx with
             | None -> doWithConnection cmgr transactional
-            | Some t -> subscribe t (fun _ -> Commit)
+            | Some t -> subscribe t (fun _ _ -> ()) (fun _ _ -> ()) (fun _ _ -> ())
 
 /// Executes a SQL statement and returns the number of rows affected.
 /// For use within a tx monad.
