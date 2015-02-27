@@ -701,6 +701,39 @@ let connMgrTests =
         //dataReaderToSeqIsCacheable2, "dataReaderToSeqIsCacheable2"
         //dataReaderToSeqIsCacheable3, "dataReaderToSeqIsCacheable3"
         "datareader with lazy list", dataReaderWithLazyList
+
+        "map id Failed", fun mgr ->
+            let nested (f_cont : Sql.ConnectionManager -> _) =
+                tx {
+                    let! ret = f_cont
+                    return ret
+                }
+            let inner =
+                tx {
+                    do! Tx.execNonQueryi "insert into some_table(id) values(@id)"
+                                        [ P("@id", "290345632deadbeef") ]
+                }
+
+            match nested inner mgr with
+            | Tx.Failed _ -> ()
+            | other -> failtestf "Expected Failed, got %A" other
+
+        "map id Commit", fun mgr ->
+            let nested (f_cont : Sql.ConnectionManager -> _) =
+                tx {
+                    let! ret = f_cont
+                    return ret
+                }
+            let inner =
+                tx {
+                    do! txInsert 1
+                }
+
+            match nested inner mgr with
+            | Tx.Commit _ -> ()
+            | other -> failtestf "Expected commit, got %A" other
+            
+                  
     ]
 
 open Fuchu
