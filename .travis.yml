@@ -1,1 +1,1 @@
-script: monotest.sh
+script: sudo monotest.sh
