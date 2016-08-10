@@ -1,0 +1,7 @@
+framework: >= net45
+source https://api.nuget.org/v3/index.json
+
+nuget FSharp.Collections.ParallelSeq
+nuget FSharp.Core ~> 3
+nuget FSharpx.Collections
+nuget Fuchu

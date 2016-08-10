@@ -3,6 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{1172F6AA-333E-46D4-990A-E37542DBC0D8}"
+	ProjectSection(SolutionItems) = preProject
+		paket.dependencies = paket.dependencies
+	EndProjectSection
+EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsSql", "FsSql\FsSql.fsproj", "{F2570DA4-5DF1-4D5E-9534-B3F55606B3B5}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsSql.Tests", "FsSql.Tests\FsSql.Tests.fsproj", "{FFAE1F80-4C7C-4F58-9077-838C4265EED6}"
