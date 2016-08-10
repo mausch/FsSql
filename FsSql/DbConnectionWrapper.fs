@@ -1,5 +1,4 @@
-[<AutoOpen>]
-module FsSqlConnectionWrapper
+namespace FsSql
 
 open System.Data
 

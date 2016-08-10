@@ -1,13 +1,15 @@
-namespace FsSqlImpl
+namespace FsSql
 
 open System.Data
-open FsSqlPrelude
+open FsSql.Logging
+open FsSql.Prelude
 
 type internal DataReaderWrapper(dr: IDataReader, dispose: unit -> unit) =
+    let logger = Log.create "FsSql.Impl.DataReaderWrapper"
     interface IDataReader with
         member x.Close() = dr.Close()
         member x.Dispose() =
-            log "DataReaderWrapper dispose"
+            logger.verbose (Message.eventX "DataReaderWrapper dispose")
             if not (dr.IsClosed)
                 then dr.Dispose()
             dispose()

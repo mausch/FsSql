@@ -1,5 +1,5 @@
 [<AutoOpen>]
-module FsSqlOperators
+module FsSql.Operators
 
 open System.Data
 

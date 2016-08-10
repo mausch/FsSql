@@ -1,4 +1,4 @@
-module Option
+module FsSql.Option
 
 open System
 

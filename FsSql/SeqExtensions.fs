@@ -1,13 +1,17 @@
-module Seq
+module FsSql.Seq
 
 open System
 open System.Data
-open FsSqlPrelude
-open FsSqlImpl
+open FsSql
+open FsSql.Logging
+open FsSql.Logging.Message
+open FsSql.Prelude
+
+let logger = Log.create "FsSql.Seq"
 
 /// Generates a new forward-only sequence from the given datareader.
 let ofDataReader (dr: #IDataReader) =
-    log "started ofDataReader"
+    logger.verbose (eventX  "Started ofDataReader")
     let lockObj = obj()
     let lockReader f = lock lockObj f
     let read()() =
@@ -23,7 +27,7 @@ let ofDataReader (dr: #IDataReader) =
         try
             yield! records
         finally
-            log "datareader dispose"
+            logger.verbose (eventX "DataReader Dispose")
             if not (dr.IsClosed)
                 then dr.Dispose()}
 

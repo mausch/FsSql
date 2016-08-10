@@ -1,5 +1,5 @@
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
-module Sql
+module FsSql.Sql
 
 open System
 open System.Collections.Generic
@@ -8,9 +8,12 @@ open System.Data.SqlClient
 open System.Reflection
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Reflection
-open FsSqlImpl
-open FsSqlPrelude
+open FsSql.Logging
+open FsSql.Logging.Message
+open FsSql.Prelude
 open FsSql.Async
+
+let logger = Log.create "FsSql.Impl.Sql"
 
 /// Encapsulates how to create and dispose a database connection
 type ConnectionManager = {
@@ -29,29 +32,37 @@ type ConnectionManager = {
 let withConnection (conn: IDbConnection) : ConnectionManager =
     let id = Guid.NewGuid().ToString()
     let create() =
-        logf "creating connection from const %s" id
+        logger.verbose (eventX "Using existing connection with {id}" >> setField "id" id)
         conn
-    let dispose c = logf "disposing connection (but not really) %s" id
+
+    let dispose c =
+        logger.verbose (eventX "Disposing connection (but not really) with {id}" >> setField "id" id)
+
     ConnectionManager.make(create, dispose)
 
 /// Creates a <see cref="ConnectionManager"/> with an externally-owned transaction
 let withTransaction (tx: IDbTransaction): ConnectionManager =
     let id = Guid.NewGuid().ToString()
     let create() =
-        logf "creating connection from const %s" id
+        logger.verbose (eventX "Using existing transaction connection. Connection has {id}" >> setField "id" id)
         tx.Connection
-    let dispose c = logf "disposing connection (but not really) %s" id
+
+    let dispose c =
+        logger.verbose (eventX "Disposing connection (but not really) with {id}" >> setField "id" id)
+
     ConnectionManager.make(create, dispose, tx)
 
 /// Creates a <see cref="ConnectionManager"/> with an owned connection
 let withNewConnection (create: unit -> IDbConnection) : ConnectionManager =
     let id = Guid.NewGuid().ToString()
     let create() =
-        logf "creating connection %s" id
+        logger.verbose (eventX "Creating connection with {id}" >> setField "id" id)
         create()
+        
     let dispose (c: IDisposable) =
+        logger.verbose (eventX "Disposing connection with {id}" >> setField "id" id)
         c.Dispose()
-        logf "disposing connection %s" id
+
     ConnectionManager.make(create, dispose)
 
 let internal withCreateConnection (create: unit -> IDbConnection) : ConnectionManager =

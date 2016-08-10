@@ -1,5 +1,6 @@
-[<AutoOpen>]
-module FsSqlOOWrapper
+namespace FsSql
+
+open FsSql
 
 type SqlWrapper(cmgr: Sql.ConnectionManager) =
     member x.ExecReaderF f = Sql.execReaderF cmgr f

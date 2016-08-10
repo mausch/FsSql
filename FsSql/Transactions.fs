@@ -1,10 +1,16 @@
-module Tx
+/// Transaction functions
+module FsSql.Tx
 
 open System
 open System.Data
-open Sql
-open FsSqlPrelude
+open FsSql
+open FsSql.Sql
+open FsSql.Prelude
+open FsSql.Logging
+open FsSql.Logging.Message
 open Microsoft.FSharp.Reflection
+
+let private logger = Log.create "FsSql.Tx"
 
 /// Transaction result
 type TxResult<'a,'b> =
@@ -19,21 +25,22 @@ type TxResult<'a,'b> =
 let transactionalWithIsolation (isolation: IsolationLevel) (f: ConnectionManager -> 'a) (cmgr: ConnectionManager) : TxResult<'a, 'b> =
     let transactionalWithIsolation' (conn: IDbConnection) =
         let id = Guid.NewGuid().ToString()
-        logf "starting tx %s" id
+        let evt msg = eventX msg >> setField "transactionId" id
+        logger.verbose (evt "Starting transaction with {transactionId}")
         use tx = conn.BeginTransaction(isolation)
-        logf "started tx %s" id
+        logger.verbose (evt "Started transaction with {transactionId}")
         try
             let r = f (withTransaction tx)
             tx.Commit()
-            logf "committed tx %s" id
+            logger.verbose (evt "Committed transaction with {transactionId}")
             Commit r
         with e ->
-            logf "got exception in tx %s : \n%A" id e
+            logger.debug (evt "Exception during transaction with {transactionId}" >> addExn e)
             if isNull tx.Connection then
-                logf "WARNING: null connection in tx %s" id
-            logf "rolling back tx %s" id
+                logger.warn (evt "WARNING: null connection for transaction with {transactionId}")
+            logger.info (evt "Rolling back transcation with {transactionId}")
             tx.Rollback()
-            logf "rolled back tx %s" id
+            logger.info (evt "Rolled back transaction with {transactionId}")
             Failed e
     doWithConnection cmgr transactionalWithIsolation'
 

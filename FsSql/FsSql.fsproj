@@ -51,7 +51,10 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="FSharpTypeExtensions.fs" />
     <Compile Include="FSharpValueExtensions.fs" />
-    <Compile Include="Logging.fs" />
+    <Compile Include="..\paket-files\logary\logary\src\Logary.Facade\Facade.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/Facade.fs</Link>
+    </Compile>
     <Compile Include="prelude.fs" />
     <Compile Include="AsyncExtensions.fs" />
     <Compile Include="OptionExtensions.fs" />

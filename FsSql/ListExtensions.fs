@@ -1,4 +1,4 @@
-module List
+module FsSql.List
 
 open System.Data
 

@@ -1,4 +1,4 @@
-namespace FsSqlImpl
+namespace FsSql
 
 open System.Data
 

@@ -16,13 +16,18 @@ open System.Data.SQLite
 open System.IO
 open System.Linq
 open System.Reflection
-open FsSqlPrelude
+open FsSql
+open FsSql.Prelude
+open FsSql.Logging
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Reflection
 open FSharp.Collections.ParallelSeq
 open FSharpx.Collections
 
 let P = Sql.Parameter.make
+let logger = Log.create "FsSql.Tests"
+
+let inline logf x = Printf.kprintf (Message.event Verbose >> logger.logSimple) x
 
 let createConnection() =
     let conn = new SQLiteConnection("Data Source=:memory:;Version=3;New=True")
@@ -53,7 +58,7 @@ let createSchema conn =
     exec "create table person (id int primary key not null, name varchar not null, parent int null)"
     exec "drop table if exists address"
     exec "create table address (id int primary key not null, person int not null, street varchar null, city varchar not null)"
-    log "done creating schema"
+    logger.logSimple (Message.event Verbose "done creating schema")
 
 let createConnectionAndSchema() =
     let conn = createConnection()
@@ -156,7 +161,7 @@ let getMany conn =
         insertUser conn {id = i; name = "pepe" + i.ToString(); parent = None}
     let first10 = Sql.execReaderF conn "select * from person" |> Seq.ofDataReader |> Seq.truncate 10
     for i in first10 do
-        logf "%d\n" (i?id).Value
+        logger.logSimple (Message.event Verbose "{d}" |> Message.setField "d" (i?id).Value)
 
 let someTranAndFail conn =
     insertUser conn {id = 1; name = "pepe"; parent = None}
@@ -220,7 +225,7 @@ let ``pseq isprime`` () =
     Assert.Equal("prime count", 54359, p)
 
 let insertUsers conn =
-    log "inserting"
+    logger.logSimple (Message.event Verbose "inserting")
     let insert conn =
         //for i in 100000000..100050000 do
         for i in 1..10 do
@@ -230,7 +235,7 @@ let insertUsers conn =
     
 let dataReaderIsParallelizable conn =
     insertUsers conn |> ignore
-    log "reading"
+    logger.logSimple (Message.event Verbose "reading")
     let primes = Sql.execReader conn "select * from person" []
                     |> Seq.ofDataReader
                     |> PSeq.map (fun r -> (r?id).Value)

@@ -5,6 +5,8 @@ open System.Collections.Generic
 open System.Data
 open Microsoft.FSharp.Reflection
 
+open FsSql
+
 #if __MonoSQL__
 open Mono.Data.Sqlite
 type SQLiteConnection = SqliteConnection

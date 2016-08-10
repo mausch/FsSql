@@ -3,8 +3,7 @@
 open System
 open System.Data
 open System.Data.SqlClient
-open FsSqlImpl
-
+open FsSql
 
 let log = ResizeArray<string>() // naive log of executed commands
 
