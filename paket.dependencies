@@ -5,3 +5,4 @@ nuget FSharp.Collections.ParallelSeq
 nuget FSharp.Core ~> 3
 nuget FSharpx.Collections
 nuget Fuchu
+github logary/logary src/Logary.Facade/Facade.fs

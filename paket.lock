@@ -7,3 +7,6 @@ NUGET
       FSharp.Core
     Fuchu (1.0.3)
       FSharp.Core (>= 3.1.2.1)
+GITHUB
+  remote: logary/logary
+    src/Logary.Facade/Facade.fs (290e9289b219f014447e83ac4c9c2ff097d8a243)

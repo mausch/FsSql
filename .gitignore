@@ -11,3 +11,4 @@ packages/*
 FsSql.userprefs
 *.exe
 *.sln.ide
+paket-files/
