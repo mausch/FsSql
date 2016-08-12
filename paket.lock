@@ -9,4 +9,4 @@ NUGET
       FSharp.Core (>= 3.1.2.1)
 GITHUB
   remote: logary/logary
-    src/Logary.Facade/Facade.fs (290e9289b219f014447e83ac4c9c2ff097d8a243)
+    src/Logary.Facade/Facade.fs (43d3bc02f20bd600e7c299ceff7e684275e5866a)
