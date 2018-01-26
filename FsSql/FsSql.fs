@@ -77,7 +77,6 @@ let internal PrintfFormatProc (worker: string * obj list -> 'd)  (query: PrintfF
             | x::xs -> FSharpType.MakeFunctionType(x,makeFunctionType xs)
             | _ -> failwith "shouldn't happen"
         let rec proc (types: Type list) (values: obj list) (a: obj) : obj =
-            let id = Guid.NewGuid().ToString()
             let values = a::values
             match types with
             | [x;y] ->
