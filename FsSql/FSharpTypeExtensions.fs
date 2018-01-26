@@ -24,6 +24,4 @@ module FSharpType =
 
     let tryGetMethod (name: string) (types: Type[]) (t: Type) =
         let m = t.GetMethod(name, types)
-        if m = null
-            then None
-            else Some m
+        Option.ofObj m

@@ -318,8 +318,8 @@ let mapOne mapper datareader =
 
 /// Maps a row as a sequence of name,value
 let asNameValue (r: IDataRecord) =
-    let names = {0..r.FieldCount-1} |> Seq.map r.GetName
-    let values = {0..r.FieldCount-1} |> Seq.map r.GetValue
+    let names = Seq.init r.FieldCount r.GetName
+    let values = Seq.init r.FieldCount r.GetValue
     Seq.zip names values
 
 /// Maps a row as a Map of name,value
