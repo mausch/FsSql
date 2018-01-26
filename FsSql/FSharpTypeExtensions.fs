@@ -5,7 +5,6 @@ open System.Reflection
 open Microsoft.FSharp.Reflection
 open Microsoft.FSharp.Core
 
-[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module FSharpType =
     /// Returns true if type is an Option type
     let IsOption (t: Type) =

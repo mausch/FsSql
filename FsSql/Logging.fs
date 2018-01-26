@@ -122,7 +122,6 @@ let private logger =
     ref ((fun () -> DateTime.UtcNow.Ticks),
           fun (name : string) -> NoopLogger)
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module LogLine =
 
     let mk (clock : unit -> Ticks) path level data message =
@@ -148,7 +147,6 @@ let configure (clock : unit -> Ticks) fLogger =
 let getLoggerByName name =
     (!logger |> snd) name
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
 
     let log (logger : Logger) (line : LogLine) =
