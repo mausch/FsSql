@@ -1,57 +1,10 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{FFAE1F80-4C7C-4F58-9077-838C4265EED6}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>FsSql.Tests</RootNamespace>
-    <AssemblyName>FsSql.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <Name>FsSql.Tests</Name>
-    <TargetFrameworkProfile />
-    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
-    <RestorePackages>true</RestorePackages>
+    <TargetFramework>net461</TargetFramework>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <Tailcalls>false</Tailcalls>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Debug\FsSql.Tests.XML</DocumentationFile>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <Tailcalls>true</Tailcalls>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\FsSql.Tests.XML</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
-    <DefineConstants>$(DefineConstants);__MonoSQL__</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup>
-    <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
-  </PropertyGroup>
-  <Choose>
-    <When Condition="'$(VisualStudioVersion)' == '11.0'">
-      <PropertyGroup>
-        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets</FSharpTargetsPath>
-      </PropertyGroup>
-    </When>
-    <Otherwise>
-      <PropertyGroup>
-        <FSharpTargetsPath>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\FSharp\Microsoft.FSharp.Targets</FSharpTargetsPath>
-      </PropertyGroup>
-    </Otherwise>
-  </Choose>
-  <Import Project="$(FSharpTargetsPath)" Condition="Exists('$(FSharpTargetsPath)')" />
+
   <ItemGroup>
     <Compile Include="prelude.fs" />
     <Compile Include="Tests.fs" />
@@ -59,33 +12,23 @@
     <Compile Include="AdventureWorksTests.fs" />
     <Compile Include="main.fs" />
     <None Include="Samples.fsx" />
-    <None Include="packages.config" />
-    <None Include="App.config" />
   </ItemGroup>
+
   <ItemGroup>
-    <Reference Include="Fuchu">
-      <HintPath>..\packages\Fuchu.0.4.0.0\lib\Fuchu.dll</HintPath>
-    </Reference>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Data.SQLite" Condition="'$(OS)' == 'Windows_NT'">
-      <HintPath>..\lib\System.Data.SQLite.dll</HintPath>
-    </Reference>
-    <Reference Include="Mono.Data.Sqlite" Condition="'$(OS)' != 'Windows_NT'" />
-    <ProjectReference Include="..\FsSql\FsSql.fsproj">
-      <Name>FsSql</Name>
-      <Project>{F2570DA4-5DF1-4D5E-9534-B3F55606B3B5}</Project>
-    </ProjectReference>
-    <Reference Include="System.Numerics" />
-    <Reference Include="FSharpx.Collections">
-      <HintPath>..\packages\FSharpx.Collections.1.9.4\lib\net35\FSharpx.Collections.dll</HintPath>
-    </Reference>
-    <Reference Include="FSharp.Collections.ParallelSeq">
-      <HintPath>..\packages\FSharp.Collections.ParallelSeq.1.0.2\lib\net40\FSharp.Collections.ParallelSeq.dll</HintPath>
-    </Reference>
-    <Reference Include="FSharp.Core">
-      <HintPath>..\packages\FSharp.Core.3.1.2.1\lib\net40\FSharp.Core.dll</HintPath>
-    </Reference>
+    <PackageReference Include="Expecto" Version="5.1.2" />
+    <PackageReference Include="Expecto.VisualStudio.TestAdapter" Version="6.0.1" />
+    <PackageReference Include="FSharp.Collections.ParallelSeq" Version="1.0.2" />
+    <PackageReference Include="FSharpx.Collections" Version="1.17.0" />
+    <PackageReference Include="System.Data.SQLite" Version="1.0.106" Condition="'$(OS)' == 'Windows_NT'" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FsSql\FsSql.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="4.3.0" />
+    <PackageReference Update="System.ValueTuple" Version="4.4.0" />
+  </ItemGroup>
+
 </Project>
