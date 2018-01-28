@@ -11,18 +11,19 @@ open System.Xml
 type SqlCommand with
     member cmd.AsyncExecNonQuery(?cancellationToken) =
         match cancellationToken with
-        | Some ct -> cmd.ExecuteNonQueryAsync(ct) |> Async.AwaitTask
-        | None    -> cmd.ExecuteNonQueryAsync() |> Async.AwaitTask
+        | Some ct -> async { return! cmd.ExecuteNonQueryAsync(ct) |> Async.AwaitTask }
+        | None    -> async { return! cmd.ExecuteNonQueryAsync() |> Async.AwaitTask }
+        
 
     member cmd.AsyncExecReader(?cancellationToken:CancellationToken) : SqlDataReader Async =
         match cancellationToken with
-        | Some ct -> cmd.ExecuteReaderAsync(ct) |> Async.AwaitTask
-        | None    -> cmd.ExecuteReaderAsync() |> Async.AwaitTask
+        | Some ct -> async { return! cmd.ExecuteReaderAsync(ct) |> Async.AwaitTask }
+        | None    -> async { return! cmd.ExecuteReaderAsync() |> Async.AwaitTask }
 
     member cmd.AsyncExecXmlReader(?cancellationToken) =
         match cancellationToken with
-        | Some ct -> cmd.ExecuteXmlReaderAsync(ct) |> Async.AwaitTask
-        | None    -> cmd.ExecuteXmlReaderAsync() |> Async.AwaitTask
+        | Some ct -> async { return! cmd.ExecuteXmlReaderAsync(ct) |> Async.AwaitTask }
+        | None    -> async { return! cmd.ExecuteXmlReaderAsync() |> Async.AwaitTask }
 
 type IAsyncOps =
     abstract execNonQuery: IDbCommand -> int Async
