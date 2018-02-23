@@ -5,7 +5,6 @@ open System.Reflection
 open Microsoft.FSharp.Reflection
 open Microsoft.FSharp.Core
 
-[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module FSharpType =
     /// Returns true if type is an Option type
     let IsOption (t: Type) =
@@ -25,6 +24,4 @@ module FSharpType =
 
     let tryGetMethod (name: string) (types: Type[]) (t: Type) =
         let m = t.GetMethod(name, types)
-        if m = null
-            then None
-            else Some m
+        Option.ofObj m

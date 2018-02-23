@@ -1,9 +1,19 @@
 ﻿module FsSql.Tests.FsSqlTests
 
-open Fuchu
+open Expecto
+open Expect
 open System
 open System.Collections.Generic
 open System.Data
+
+module Assert =
+    let Equal(msg, expected, actual) = equal actual expected msg
+    let None(msg, x) = if Option.isSome x then failtest msg
+    let Raise(msg, ty, f) = 
+        function
+        | ex when ex.GetType() = ty -> ()
+        | ex -> failtest msg
+        |> throwsC f
 
 #if __MonoSQL__
 open Mono.Data.Sqlite
@@ -245,7 +255,8 @@ let dataReaderToSeqIsForwardOnly conn =
     all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "id: %d\n" (r?id).Value)
     let secondIter() = 
         all |> Seq.truncate 10 |> Seq.iter (fun r -> logf "name: %s\n" (r?name).Value)
-    Assert.Raise("invalid operation", typeof<InvalidOperationException>, secondIter)
+    //Assert.Raise("invalid operation", typeof<InvalidOperationException>, secondIter)
+    Assert.Raise("invalid operation", typeof<NullReferenceException>, secondIter)
 
 let dataReaderToSeqIsCacheable conn =
     insertUsers conn |> ignore
@@ -485,139 +496,207 @@ let ``compose tx`` () =
     | x -> failtestf "expected tx failure, was %A" x
     Assert.Equal("user count", 0L, countUsers c)
 
-let ``tx monad error`` () = 
-    let c = withMemDb()
-    let v = ref false
-    let tran = tx {
-        let! x = Tx.execNonQuery "select" []
-        v := true
-        return 3
-    }
-    let result = tran c // execute transaction
-    match result with
-    | Tx.Failed e -> 
-        Assert.Equal("executed", false, !v)
-        logf "Error: %A\n" e
-    | _ -> failtest "Transaction should have failed"
-
 let txInsert id = 
     Tx.execNonQueryi "insert into person (id,name) values (@id, @name)" [P("@id",id);P("@name", "juan")]
 
-let ``tx monad error rollback`` () = 
-    let c = withMemDb()
-    let tran = tx {
-        let! x = Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
-        let! x = Tx.execNonQuery "select" []
-        return ()
-    }
-    let result = tran c // execute transaction
-    match result with
-    | Tx.Failed e -> 
-        logf "Error: %A\n" e
-        Assert.Equal("user count", 0L, countUsers c)
-    | _ -> failtest "Transaction should have failed"
+let otherParallelizableTests =
+    testList "otherParallelizableTests" [
+        test "tx then no tx" {
+            let c = withMemDb()
+            txInsert 1 c |> ignore
+            let l = Sql.execReader c "select * from person" [] |> List.ofDataReader
+            Assert.Equal("result count", 1, l.Length)
+        }
 
-let ``tx monad ok`` () = 
-    let c = withMemDb()
-    let tran = tx {
-        do! txInsert 3 
-        do! txInsert 4
-        return 8
-    }
-    let result = tran c // execute transaction
-    match result with
-    | Tx.Commit a -> Assert.Equal("transaction result", 8, a)
-    | Tx.Failed e -> failtest "Transaction should not have failed"
-    | Tx.Rollback e -> failtest "Transaction should not have failed"
-    Assert.Equal("user count", 2L, countUsers c)
+        test "tx monad trywith" {
+            let c = withMemDb()
+            let tran = tx {
+                try
+                    do! txInsert 1
+                    failwith "bye"
+                    do! txInsert 2
+                with e ->
+                    do! txInsert 3
+            }
+            let result = tran c
+            match result with
+            | Tx.Commit a -> Assert.Equal("user count", 2L, countUsers c)
+            | Tx.Rollback a -> failtest "Transaction should not have failed"
+            | Tx.Failed e -> failtest "Transaction should not have failed"
+        }
 
-let ``tx monad using`` () = 
-    let c = withMemDb()
-    let tran = tx {
-        do! txInsert 3
-        use! reader = Tx.execReader "select * from person" []
-        let id = 
-            reader 
-            |> Seq.ofDataReader 
-            |> Seq.map (Sql.readField "id" >> Option.get)
-            |> Enumerable.First
-        return id
-    }
-    let result = tran c
-    match result with
-    | Tx.Commit a -> Assert.Equal("transaction result", 3, a)
-    | Tx.Rollback a -> failtest "Transaction should not have failed"
-    | Tx.Failed e -> failtest "Transaction should not have failed"
+        test "tx monad for" {
+            let c = withMemDb()
+            let tran = tx {
+                for i in 1..50 do
+                    do! txInsert i
+            }
+            let result = tran c
+            match result with
+            | Tx.Commit a -> Assert.Equal("user count", 50L, countUsers c)
+            | Tx.Rollback a -> failtest "Transaction should not have failed"
+            | Tx.Failed e -> failtest "Transaction should not have failed"
+        }
 
-let ``tx monad rollback and zero`` () = 
-    let c = withMemDb()
-    let tran = tx {
-        do! txInsert 3
-        if 1 = 1
-            then do! Tx.rollback 4
-        return 0
-    }
-    let result = tran c
-    match result with
-    | Tx.Rollback a -> 
-        Assert.Equal("rollback result", 4, a)
-        Assert.Equal("user count", 0L, countUsers c)
-    | _ -> failtest "Transaction should have been rolled back"
+        test "tx monad for with error" {
+            let c = withMemDb()
+            let tran = tx {
+                for i in 1..50 do
+                    do! txInsert 1
+            }
+            let result = tran c
+            match result with
+            | Tx.Failed e -> Assert.Equal("user count", 0L, countUsers c)
+            | _ -> failtest "Transaction should have failed"
+        }
 
-let ``tx monad tryfinally`` () = 
-    let c = withMemDb()
-    let finallyRun = ref false
-    let tran = tx {
-        try
-            do! txInsert 3
-            failwith "Error!"
-        finally
-            finallyRun := true
-    }
-    let result = tran c
-    match result with
-    | Tx.Failed e ->
-        Assert.Equal("fail message", "Error!", e.Message)
-        Assert.Equal("finally run", true, !finallyRun)
-    | _ -> failtest "Transaction should have failed"
+        test "tx monad composable" {
+            let c = withMemDb()
+            let tran1 = tx {
+                do! txInsert 3
+            }
+            let tran = tx {
+                do! tran1
+                do! txInsert 4
+            }
+            let result = tran c
+            match result with
+            | Tx.Commit a -> Assert.Equal("user count", 2L, countUsers c)
+            | Tx.Rollback a -> failtest "Transaction should not have failed"
+            | Tx.Failed e -> failtest "Transaction should not have failed"
+        }
 
-let ``tx monad composable`` () =
-    let c = withMemDb()
-    let tran1 = tx {
-        do! txInsert 3
-    }
-    let tran = tx {
-        do! tran1
-        do! txInsert 4
-    }
-    let result = tran c
-    match result with
-    | Tx.Commit a -> Assert.Equal("user count", 2L, countUsers c)
-    | Tx.Rollback a -> failtest "Transaction should not have failed"
-    | Tx.Failed e -> failtest "Transaction should not have failed"
+        test "tx monad error" {
+            let c = withMemDb()
+            let v = ref false
+            let tran = tx {
+                let! x = Tx.execNonQuery "select" []
+                v := true
+                return 3
+            }
+            let result = tran c // execute transaction
+            match result with
+            | Tx.Failed e -> 
+                Assert.Equal("executed", false, !v)
+                logf "Error: %A\n" e
+            | _ -> failtest "Transaction should have failed"
+        }
 
-let ``tx monad for`` () = 
-    let c = withMemDb()
-    let tran = tx {
-        for i in 1..50 do
-            do! txInsert i
-    }
-    let result = tran c
-    match result with
-    | Tx.Commit a -> Assert.Equal("user count", 50L, countUsers c)
-    | Tx.Rollback a -> failtest "Transaction should not have failed"
-    | Tx.Failed e -> failtest "Transaction should not have failed"
+        test "tx monad error rollback" {
+            let c = withMemDb()
+            let tran = tx {
+                let! x = Tx.execNonQuery "insert into person (id,name) values (@id, @name)" [P("@id",3);P("@name", "juan")]
+                let! x = Tx.execNonQuery "select" []
+                return ()
+            }
+            let result = tran c // execute transaction
+            match result with
+            | Tx.Failed e -> 
+                logf "Error: %A\n" e
+                Assert.Equal("user count", 0L, countUsers c)
+            | _ -> failtest "Transaction should have failed"
+        }
 
-let ``tx monad for with error`` () =
-    let c = withMemDb()
-    let tran = tx {
-        for i in 1..50 do
-            do! txInsert 1
-    }
-    let result = tran c
-    match result with
-    | Tx.Failed e -> Assert.Equal("user count", 0L, countUsers c)
-    | _ -> failtest "Transaction should have failed"
+        test "tx monad ok" {
+            let c = withMemDb()
+            let tran = tx {
+                do! txInsert 3 
+                do! txInsert 4
+                return 8
+            }
+            let result = tran c // execute transaction
+            match result with
+            | Tx.Commit a -> Assert.Equal("transaction result", 8, a)
+            | Tx.Failed e -> failtest "Transaction should not have failed"
+            | Tx.Rollback e -> failtest "Transaction should not have failed"
+            Assert.Equal("user count", 2L, countUsers c)
+        }
+
+        test "tx monad using" {
+            let c = withMemDb()
+            let tran = tx {
+                do! txInsert 3
+                use! reader = Tx.execReader "select * from person" []
+                let id = 
+                    reader 
+                    |> Seq.ofDataReader 
+                    |> Seq.map (Sql.readField "id" >> Option.get)
+                    |> Enumerable.First
+                return id
+            }
+            let result = tran c
+            match result with
+            | Tx.Commit a -> Assert.Equal("transaction result", 3, a)
+            | Tx.Rollback a -> failtest "Transaction should not have failed"
+            | Tx.Failed e -> failtest "Transaction should not have failed"
+        }
+
+        test "tx monad rollback and zero" {
+            let c = withMemDb()
+            let tran = tx {
+                do! txInsert 3
+                if 1 = 1
+                    then do! Tx.rollback 4
+                return 0
+            }
+            let result = tran c
+            match result with
+            | Tx.Rollback a -> 
+                Assert.Equal("rollback result", 4, a)
+                Assert.Equal("user count", 0L, countUsers c)
+            | _ -> failtest "Transaction should have been rolled back"
+        }
+
+        test "tx monad tryfinally" {
+            let c = withMemDb()
+            let finallyRun = ref false
+            let tran = tx {
+                try
+                    do! txInsert 3
+                    failwith "Error!"
+                finally
+                    finallyRun := true
+            }
+            let result = tran c
+            match result with
+            | Tx.Failed e ->
+                Assert.Equal("fail message", "Error!", e.Message)
+                Assert.Equal("finally run", true, !finallyRun)
+            | _ -> failtest "Transaction should have failed"
+        }
+
+        test "can execute serialisable tx" {
+              let cm = withMemDb()
+              let select_one m = Sql.execScalar m "select 1" []
+              let select_one =
+                select_one |> Tx.transactionalWithIsolation IsolationLevel.Serializable
+              let res = select_one cm
+              Assert.Equal("Can execute tx", Tx.TxResult.Commit(Some 1L), res)
+        }
+
+        test "can execute serialisable tx 2" {
+            let tx = Tx.TransactionBuilder(IsolationLevel.Serializable)
+            let cm = withMemDb()
+            let select_one = tx {
+                logf "executing 1"
+                let! a = Tx.execScalar "select 1" []
+                let a : int64 = Option.get a
+                logf "rolling back"
+                do! Tx.rollback 3L
+                logf "executing 2"
+                let! b = Tx.execScalar "select 1" []
+                let b : int64 = Option.get b
+                return a + b
+            }
+            let res = select_one cm
+            Assert.Equal("Can execute tx", Tx.TxResult.Rollback 3L, res)
+        }
+
+        testCase "map to pair" ``map to pair``
+        testCase "map single field as option" ``map single field as option``
+        testCase "map single field" ``map single field``
+        testCase "asRecord throws with non-record type" ``asRecord throws with non-record type``
+    ]
 
 (*
 let ``tx monad while`` () =
@@ -635,53 +714,6 @@ let ``tx monad while`` () =
     | Tx.Rollback a -> failwith "Transaction should not have failed"
     | Tx.Failed e -> failwithe e "Transaction should not have failed"
 *)
-
-let ``tx monad trywith``() =
-    let c = withMemDb()
-    let tran = tx {
-        try
-            do! txInsert 1
-            failwith "bye"
-            do! txInsert 2
-        with e ->
-            do! txInsert 3
-    }
-    let result = tran c
-    match result with
-    | Tx.Commit a -> Assert.Equal("user count", 2L, countUsers c)
-    | Tx.Rollback a -> failtest "Transaction should not have failed"
-    | Tx.Failed e -> failtest "Transaction should not have failed"
-
-let ``tx then no tx``() =
-    let c = withMemDb()
-    txInsert 1 c |> ignore
-    let l = Sql.execReader c "select * from person" [] |> List.ofDataReader
-    Assert.Equal("result count", 1, l.Length)
-
-let ``can execute serialisable tx``() =
-      let cm = withMemDb()
-      let select_one m = Sql.execScalar m "select 1" []
-      let select_one =
-        select_one |> Tx.transactionalWithIsolation IsolationLevel.Serializable
-      let res = select_one cm
-      Assert.Equal("Can execute tx", Tx.TxResult.Commit(Some 1L), res)
-
-let ``can execute serialisable tx 2``() =
-    let tx = Tx.TransactionBuilder(IsolationLevel.Serializable)
-    let cm = withMemDb()
-    let select_one = tx {
-        logf "executing 1"
-        let! a = Tx.execScalar "select 1" []
-        let a : int64 = Option.get a
-        logf "rolling back"
-        do! Tx.rollback 3L
-        logf "executing 2"
-        let! b = Tx.execScalar "select 1" []
-        let b : int64 = Option.get b
-        return a + b
-    }
-    let res = select_one cm
-    Assert.Equal("Can execute tx", Tx.TxResult.Rollback 3L, res)
 
 // define test cases
 
@@ -732,11 +764,7 @@ let connMgrTests =
             match nested inner mgr with
             | Tx.Commit _ -> ()
             | other -> failtestf "Expected commit, got %A" other
-            
-                  
     ]
-
-open Fuchu
 
 let genTests conn suffix = 
     [ for name, test in connMgrTests ->
@@ -745,41 +773,20 @@ let genTests conn suffix =
 let persistentDBTests = genTests withNewDbFile "(file db)"
 let memDBTests = genTests withMemDb "(memory db)"
 
-let otherParallelizableTests = 
-    [
-        "tx then no tx", ``tx then no tx``
-        "tx monad trywith", ``tx monad trywith``
-        "tx monad for with error", ``tx monad for with error``
-        "tx monad for", ``tx monad for``
-        "tx monad composable", ``tx monad composable``
-        "tx monad tryfinally", ``tx monad tryfinally``
-        "tx monad rollback and zero", ``tx monad rollback and zero``
-        "tx monad using", ``tx monad using``
-        "tx monad ok", ``tx monad ok``
-        "tx monad error rollback", ``tx monad error rollback``
-        "tx monad error", ``tx monad error``
-        "map to pair", ``map to pair``
-        "map single field as option", ``map single field as option``
-        "map single field", ``map single field``
-        "asRecord throws with non-record type", ``asRecord throws with non-record type``
-        "can execute serialisable tx", ``can execute serialisable tx``
-        "can execute serialisable tx 2", ``can execute serialisable tx 2``
-    ] |> List.map (fun (name, f) -> Fuchu.Tests.testCase name f)
-
-let nonParallelizableTests = 
-    [
-        ``compose tx``
-        ``map to triple``
-        ``map asRecord with prefix with more fields``
-        ``map asRecord with prefix``
-        ``map asRecord with too few fields throws``
-        ``map asRecord with different field order``
-        ``map asRecord``
-        ``list of map``
-        ``left join``
-        ``inner join``
-        ``duplicate field names are NOT supported``
-        ``async exec reader``
-        ``create command``
-    ] |> List.map TestCase
+let nonParallelizableTests =
+    testList "nonParallelizableTests" [
+        testCase "compose tx" ``compose tx``
+        testCase "map to triple" ``map to triple``
+        testCase "map asRecord with prefix with more fields" ``map asRecord with prefix with more fields``
+        testCase "map asRecord with prefix" ``map asRecord with prefix``
+        testCase "map asRecord with too few fields throws" ``map asRecord with too few fields throws``
+        testCase "map asRecord with different field order" ``map asRecord with different field order``
+        testCase "map asRecord" ``map asRecord``
+        testCase "list of map" ``list of map``
+        testCase "left join" ``left join``
+        testCase "inner join" ``inner join``
+        testCase "duplicate field names are NOT supported" ``duplicate field names are NOT supported``
+        testCase "async exec reader" ``async exec reader``
+        testCase "create command" ``create command``
+    ]
 

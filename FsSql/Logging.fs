@@ -62,7 +62,7 @@ type LogLevel =
         | 4 -> Warn
         | 5 -> Error
         | 6 -> Fatal
-        | _ as i -> failwith "rank %i not available" i) i
+        | _ as i -> failwithf "rank %i not available" i) i
 
     static member op_LessThan (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) < 0
     static member op_LessThanOrEqual (a, b) = (a :> IComparable<LogLevel>).CompareTo(b) <= 0
@@ -122,7 +122,6 @@ let private logger =
     ref ((fun () -> DateTime.UtcNow.Ticks),
           fun (name : string) -> NoopLogger)
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module LogLine =
 
     let mk (clock : unit -> Ticks) path level data message =
@@ -148,7 +147,6 @@ let configure (clock : unit -> Ticks) fLogger =
 let getLoggerByName name =
     (!logger |> snd) name
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Logger =
 
     let log (logger : Logger) (line : LogLine) =

@@ -4,7 +4,6 @@ open System
 open System.Reflection
 open Microsoft.FSharp.Reflection
 
-[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module FSharpValue =
     /// <summary>
     /// Creates a None option for type <paramref name="t"/>
