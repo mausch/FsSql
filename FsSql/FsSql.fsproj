@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net451;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <Name>FsSql</Name>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <WarningLevel>3</WarningLevel>
@@ -31,18 +31,9 @@
     <Compile Include="Transactions.fs" />
     <Compile Include="FsSqlOperators.fs" />
     <Compile Include="SqlWrapper.fs" />
-
-    <PackageReference Update="FSharp.Core" Version="4.5.0" />
-
+    <PackageReference Update="FSharp.Core" Version="4.7.0" />
   </ItemGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net451' ">
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Transactions" />
-    <Reference Include="System.Xml" />
-  </ItemGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' != 'net451' ">
+  <ItemGroup>
     <PackageReference Include="System.Data.SqlClient" Version="4.7.0" />
   </ItemGroup>
 </Project>
